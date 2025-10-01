@@ -20,12 +20,12 @@ import Success from "./pages/Success.jsx";
 import OurStory from "./pages/OurStory.jsx";
 import About from "./pages/About.jsx";
 
-// Admin Pages
+// Admin Pages (all lowercase folder)
 import AddProduct from "./pages/admin/AddProduct.jsx";
-import EditProduct from "./pages/Admin/EditProduct.jsx";
-import AdminDashboard from "./pages/Admin/AdminDashboard.jsx";
-import Orders from "./pages/Admin/Orders.jsx";
-import Users from "./pages/Admin/Users.jsx";
+import EditProduct from "./pages/admin/EditProduct.jsx";
+import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
+import Orders from "./pages/admin/Orders.jsx";
+import Users from "./pages/admin/Users.jsx";
 
 // Admin Layout (with Sidebar)
 import AdminLayout from "./components/AdminLayout.jsx";
@@ -68,7 +68,7 @@ export default function App() {
               <Route
                 path="/admin/*"
                 element={
-                  <PrivateRoute roles={["Admin"]}>
+                  <PrivateRoute roles={["admin"]}>
                     <AdminLayout />
                   </PrivateRoute>
                 }
