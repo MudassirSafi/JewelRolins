@@ -1,4 +1,4 @@
-// src/pages/SearchResults.jsx
+// src/pages/SearchResults.jsx 
 import React, { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { getProducts } from "../services/api.js";
@@ -38,13 +38,26 @@ export default function SearchResults() {
   useEffect(() => {
     let mounted = true;
     setLoading(true);
+
     getProducts()
       .then((data) => {
         if (!mounted) return;
         const all = Array.isArray(data) ? data : [];
-        const matches = all.filter((p) =>
-          p.title.toLowerCase().includes(q.toLowerCase())
-        );
+
+        // lowercase query
+        const query = q.toLowerCase().trim();
+
+        const matches = all.filter((p) => {
+          const title = (p.title || "").toLowerCase();
+          const category = (p.category || "").toLowerCase();
+
+          // ✅ check if query matches title or category
+          return (
+            title.includes(query) ||
+            category.includes(query)
+          );
+        });
+
         setProducts(matches);
       })
       .catch(() => setProducts([]))

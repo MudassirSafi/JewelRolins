@@ -26,6 +26,7 @@ import EditProduct from "./pages/admin/EditProduct.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import Orders from "./pages/admin/Orders.jsx";
 import Users from "./pages/admin/Users.jsx";
+import UserDetail from "./pages/admin/UserDetail.jsx";
 
 // Admin Layout (with Sidebar)
 import AdminLayout from "./components/AdminLayout.jsx";
@@ -79,6 +80,8 @@ export default function App() {
                 <Route path="edit/:id" element={<EditProduct />} />
                 <Route path="orders" element={<Orders />} />
                 <Route path="users" element={<Users />} />
+                <Route path="users/:id" element={<UserDetail />} />
+
               </Route>
 
               {/* 404 Page */}

@@ -93,7 +93,7 @@ export default function EditProduct() {
       transition={{ duration: 0.5 }}
       className="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-lg"
     >
-      <h1 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-[#AB80F4] to-purple-500 bg-clip-text text-transparent">
+      <h1 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] bg-clip-text text-transparent">
         ✨ Edit Product
       </h1>
 
@@ -103,7 +103,7 @@ export default function EditProduct() {
           value={form.title}
           onChange={handleChange}
           placeholder="Product Name"
-          className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#AB80F4]"
+          className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[var(--brand)]"
           required
         />
         <input
@@ -111,14 +111,14 @@ export default function EditProduct() {
           value={form.category}
           onChange={handleChange}
           placeholder="Category"
-          className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#AB80F4]"
+          className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[var(--brand)]"
         />
         <textarea
           name="description"
           value={form.description}
           onChange={handleChange}
           placeholder="Description"
-          className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#AB80F4]"
+          className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[var(--brand)]"
         />
         <div className="grid grid-cols-2 gap-3">
           <input
@@ -127,7 +127,7 @@ export default function EditProduct() {
             value={form.price}
             onChange={handleChange}
             placeholder="Price"
-            className="border px-3 py-2 rounded focus:ring-2 focus:ring-[#AB80F4]"
+            className="border px-3 py-2 rounded focus:ring-2 focus:ring-[var(--brand)]"
           />
           <input
             name="discount"
@@ -135,7 +135,7 @@ export default function EditProduct() {
             value={form.discount}
             onChange={handleChange}
             placeholder="Discount %"
-            className="border px-3 py-2 rounded focus:ring-2 focus:ring-[#AB80F4]"
+            className="border px-3 py-2 rounded focus:ring-2 focus:ring-[var(--brand)]"
           />
         </div>
 
@@ -145,7 +145,7 @@ export default function EditProduct() {
           <button
             type="button"
             onClick={handleImageAdd}
-            className="px-4 py-2 rounded-lg shadow text-white bg-gradient-to-r from-[#AB80F4] to-purple-500 hover:opacity-90 transition"
+            className="px-4 py-2 rounded-lg shadow text-white bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] hover:opacity-90 transition"
           >
             ➕ Add Image
           </button>
@@ -165,7 +165,7 @@ export default function EditProduct() {
                   <button
                     type="button"
                     onClick={() => handleImageReplace(i)}
-                    className="px-2 py-1 text-xs bg-yellow-500 text-white rounded"
+                    className="px-2 py-1 text-xs bg-[var(--accent)] text-white rounded"
                   >
                     Replace
                   </button>
@@ -186,7 +186,7 @@ export default function EditProduct() {
         <div className="flex gap-3">
           <button
             type="submit"
-            className="flex-1 py-3 rounded-lg shadow font-semibold text-white bg-gradient-to-r from-[#AB80F4] to-purple-500 hover:opacity-90 transition"
+            className="flex-1 py-3 rounded-lg shadow font-semibold text-white bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] hover:opacity-90 transition"
           >
             💾 Save Changes
           </button>

@@ -14,7 +14,7 @@ export default function AdminLayout() {
     <div className="flex min-h-screen bg-gray-100">
       {/* Sidebar */}
       <aside className="w-64 bg-white shadow-xl p-6 space-y-6">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-[#AB80F4] to-purple-500 bg-clip-text text-transparent">
+        <h2 className="text-2xl font-bold rounded-lg shadow font-semibold text-white bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] hover:opacity-90 transition">
           ⚡ Admin Panel
         </h2>
         <nav className="space-y-3">

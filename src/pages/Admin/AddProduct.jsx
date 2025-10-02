@@ -1,4 +1,3 @@
-// src/pages/Admin/AddProduct.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -90,6 +89,15 @@ export default function AddProduct() {
 
     existing.unshift(newProduct);
     localStorage.setItem("custom_products", JSON.stringify(existing));
+
+    // notify other tabs and same-tab listeners
+    try {
+      // native storage event will only fire in other windows/tabs, not this one,
+      // so we do both: setItem (above) + dispatch a custom event for same-tab listeners.
+      window.dispatchEvent(new Event("storage")); // helpful for some listeners expecting this
+    } catch {}
+    window.dispatchEvent(new Event("custom_products_changed"));
+
     alert("✅ Product added.");
     navigate("/admin/dashboard");
   };

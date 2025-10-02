@@ -1,4 +1,3 @@
-// src/pages/Admin/AdminDashboard.jsx
 import React, { useEffect, useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext.jsx";
@@ -14,10 +13,24 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("custom_products") || "[]");
-    setProducts(stored);
-    const allOrders = JSON.parse(localStorage.getItem("all_orders") || "[]");
-    setOrders(allOrders);
+    const load = () => {
+      const stored = JSON.parse(localStorage.getItem("custom_products") || "[]");
+      setProducts(stored);
+      const allOrders = JSON.parse(localStorage.getItem("all_orders") || "[]");
+      setOrders(allOrders);
+    };
+
+    load();
+
+    // Listen for changes to custom_products (other tabs or same-tab)
+    const handleStorageOrCustom = () => load();
+    window.addEventListener("storage", handleStorageOrCustom);
+    window.addEventListener("custom_products_changed", handleStorageOrCustom);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageOrCustom);
+      window.removeEventListener("custom_products_changed", handleStorageOrCustom);
+    };
   }, []);
 
   const users = getAllUsers();
@@ -27,6 +40,12 @@ export default function AdminDashboard() {
     const updated = products.filter((p) => String(p.id) !== String(id));
     setProducts(updated);
     localStorage.setItem("custom_products", JSON.stringify(updated));
+
+    // notify other/listening components
+    try {
+      window.dispatchEvent(new Event("storage"));
+    } catch {}
+    window.dispatchEvent(new Event("custom_products_changed"));
   };
 
   return (

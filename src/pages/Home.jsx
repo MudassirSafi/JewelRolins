@@ -1,4 +1,3 @@
-// src/pages/Home.jsx
 import React, { useEffect, useState, useContext } from "react";
 import { motion } from "framer-motion";
 import { getProducts } from "../services/api.js";
@@ -7,10 +6,25 @@ import { CartContext } from "../context/CartContext.jsx";
 
 function ProductCard({ p }) {
   const { addToCart } = useContext(CartContext);
+  const [added, setAdded] = useState(false);
+
+  const handleAdd = () => {
+    addToCart({
+      id: p.id,
+      title: p.title,
+      price: p.finalPrice ?? p.price,
+      originalPrice: p.price,
+      discount: p.discount || 0,
+      image: p.image || (p.images?.[0] ?? ""),
+    });
+
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1200); // reset animation
+  };
 
   return (
     <motion.div
-      className="border rounded p-3 hover:shadow-xl transition bg-white flex flex-col group"
+      className="border rounded p-3 hover:shadow-xl transition bg-white flex flex-col group relative"
       whileHover={{ scale: 1.05 }}
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -42,20 +56,24 @@ function ProductCard({ p }) {
       </div>
 
       <button
-        onClick={() =>
-          addToCart({
-            id: p.id,
-            title: p.title,
-            price: p.finalPrice ?? p.price,
-            originalPrice: p.price,
-            discount: p.discount || 0,
-            image: p.image || (p.images?.[0] ?? ""),
-          })
-        }
-        className="mt-auto px-4 py-2 rounded bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] text-white hover:opacity-90 transition text-sm sm:text-base"
+        onClick={handleAdd}
+        className="mt-auto px-4 py-2 rounded bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] text-white hover:opacity-90 transition text-sm sm:text-base relative"
       >
-        Add to Cart
+        {added ? "✓ Added!" : "Add to Cart"}
       </button>
+
+      {/* ✅ Floating animation feedback */}
+      {added && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: -20 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.8 }}
+          className="absolute top-2 right-2 bg-[var(--brand)] text-white text-xs px-2 py-1 rounded shadow"
+        >
+          Added!
+        </motion.div>
+      )}
     </motion.div>
   );
 }
@@ -95,10 +113,21 @@ export default function Home() {
     };
 
     loadProducts();
-    return () => (mounted = false);
+
+    const handleStorageOrCustom = () => {
+      loadProducts();
+    };
+
+    window.addEventListener("storage", handleStorageOrCustom);
+    window.addEventListener("custom_products_changed", handleStorageOrCustom);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener("storage", handleStorageOrCustom);
+      window.removeEventListener("custom_products_changed", handleStorageOrCustom);
+    };
   }, []);
 
-  // ✅ normalize categories for partial & case-insensitive match
   const normalize = (str) => str?.toLowerCase() || "";
 
   let filtered =

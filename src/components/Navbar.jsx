@@ -1,21 +1,21 @@
-// src/components/Navbar.jsx
 import React, { useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext.jsx";
+import { CartContext } from "../context/CartContext.jsx";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { user, logout } = useContext(AuthContext);
+  const { cart } = useContext(CartContext); // ✅ cart state
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
 
   const closeMenu = () => setOpen(false);
 
-  // normalize query for flexible category/product matching
   const normalizeQuery = (q) => {
     let normalized = q.trim().toLowerCase();
     if (normalized.endsWith("s")) {
-      normalized = normalized.slice(0, -1); // remove plural
+      normalized = normalized.slice(0, -1);
     }
     return normalized;
   };
@@ -30,20 +30,20 @@ export default function Navbar() {
     }
   };
 
-  const baseMenu = ["Home", "About", "Our Story", "Cart"];
+  const baseMenu = ["Home", "About", "Our Story"];
 
   return (
     <nav className="bg-white shadow sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-3">
         <div className="flex items-center justify-between h-16">
-          {/* logo */}
+          {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
             <div className="text-2xl font-extrabold bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] bg-clip-text text-transparent">
               JewelRolins
             </div>
           </Link>
 
-          {/* desktop menu */}
+          {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-6">
             {baseMenu.map((item, i) => (
               <Link
@@ -55,16 +55,17 @@ export default function Navbar() {
               </Link>
             ))}
 
-            {user?.role === "admin" && (
-              <Link
-                to="/admin"   // ✅ FIX: direct admin to dashboard
-                className="relative px-1 text-gray-700 font-medium transition duration-300 hover:text-[var(--brand)] after:content-[''] after:absolute after:w-0 after:h-[2px] after:bg-[var(--brand)] after:left-0 after:-bottom-1 after:transition-all after:duration-300 hover:after:w-full"
-              >
-                Dashboard
-              </Link>
-            )}
+            {/* ✅ Cart icon with badge */}
+            <Link to="/cart" className="relative px-1 text-gray-700 hover:text-[var(--brand)]">
+             Cart🛒
+              {cart.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-[var(--brand)] text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full animate-bounce">
+                  {cart.length}
+                </span>
+              )}
+            </Link>
 
-            {/* search bar */}
+            {/* Search bar */}
             <form
               onSubmit={handleSearch}
               className="flex h-9 border rounded overflow-hidden"
@@ -101,7 +102,7 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* mobile toggle */}
+          {/* Mobile toggle */}
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setOpen((prev) => !prev)}
@@ -115,26 +116,16 @@ export default function Navbar() {
                 viewBox="0 0 24 24"
               >
                 {open ? (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 ) : (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
                 )}
               </svg>
             </button>
           </div>
         </div>
 
-        {/* mobile dropdown */}
+        {/* Mobile Dropdown */}
         {open && (
           <div className="md:hidden pb-4 space-y-2 animate-fadeIn">
             {baseMenu.map((item, i) => (
@@ -148,17 +139,21 @@ export default function Navbar() {
               </Link>
             ))}
 
-            {user?.role === "admin" && (
-              <Link
-                to="/admin"   // ✅ FIX here as well for mobile
-                onClick={closeMenu}
-                className="block px-3 py-2 text-gray-700 font-medium transition duration-300 hover:text-[var(--brand)] border-b border-transparent hover:border-[var(--brand)]"
-              >
-                Dashboard
-              </Link>
-            )}
+            {/* ✅ Cart mobile */}
+            <Link
+              to="/cart"
+              onClick={closeMenu}
+              className="block px-3 py-2 text-gray-700 hover:text-[var(--brand)] border-b border-transparent hover:border-[var(--brand)] relative"
+            >
+            🛒 Cart
+              {cart.length > 0 && (
+                <span className="absolute top-1 left-16 bg-[var(--brand)] text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full animate-bounce">
+                  {cart.length}
+                </span>
+              )}
+            </Link>
 
-            {/* search bar mobile */}
+            {/* Search mobile */}
             <form
               onSubmit={handleSearch}
               className="flex h-9 border rounded overflow-hidden mx-2"
