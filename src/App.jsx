@@ -51,7 +51,7 @@ export default function App() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.4 }}
           >
-            
+
             <Routes location={location} key={location.pathname}>
               {/* Public Routes */}
               <Route path="/" element={<Home />} />

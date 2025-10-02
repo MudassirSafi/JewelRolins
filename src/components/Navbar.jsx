@@ -57,10 +57,10 @@ export default function Navbar() {
 
             {user?.role === "admin" && (
               <Link
-                to="/admin/add"
+                to="/admin"   // ✅ FIX: direct admin to dashboard
                 className="relative px-1 text-gray-700 font-medium transition duration-300 hover:text-[var(--brand)] after:content-[''] after:absolute after:w-0 after:h-[2px] after:bg-[var(--brand)] after:left-0 after:-bottom-1 after:transition-all after:duration-300 hover:after:w-full"
               >
-                Add Product
+                Dashboard
               </Link>
             )}
 
@@ -150,11 +150,11 @@ export default function Navbar() {
 
             {user?.role === "admin" && (
               <Link
-                to="/admin/add"
+                to="/admin"   // ✅ FIX here as well for mobile
                 onClick={closeMenu}
                 className="block px-3 py-2 text-gray-700 font-medium transition duration-300 hover:text-[var(--brand)] border-b border-transparent hover:border-[var(--brand)]"
               >
-                Add Product
+                Dashboard
               </Link>
             )}
 
