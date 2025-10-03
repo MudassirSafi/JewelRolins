@@ -6,7 +6,7 @@ import { CartContext } from "../context/CartContext.jsx";
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { user, logout } = useContext(AuthContext);
-  const { cart } = useContext(CartContext); // ✅ cart state
+  const { cart } = useContext(CartContext);
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
 
@@ -34,10 +34,10 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white shadow sticky top-0 z-50">
-      <div className="max-w-5xl mx-auto px-3">
+      <div className="max-w-8xl mx-auto px-3">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
+          {/* ✅ Logo always on the left */}
+          <Link to="/" className="flex items-center gap-2 mr-auto">
             <div className="text-2xl font-extrabold bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] bg-clip-text text-transparent">
               JewelRolins
             </div>
@@ -49,15 +49,22 @@ export default function Navbar() {
               <Link
                 key={i}
                 to={item === "Home" ? "/" : `/${item.toLowerCase().replace(" ", "-")}`}
-                className="relative px-1 text-gray-700 transition duration-300 hover:text-[var(--brand)] after:content-[''] after:absolute after:w-0 after:h-[2px] after:bg-[var(--brand)] after:left-0 after:-bottom-1 after:transition-all after:duration-300 hover:after:w-full"
+                className="relative px-1 text-gray-700 transition duration-300 hover:text-[var(--brand)] 
+                  after:content-[''] after:absolute after:w-0 after:h-[2px] after:bg-[var(--brand)] 
+                  after:left-0 after:-bottom-1 after:transition-all after:duration-300 hover:after:w-full"
               >
                 {item}
               </Link>
             ))}
 
-            {/* ✅ Cart icon with badge */}
-            <Link to="/cart" className="relative px-1 text-gray-700 hover:text-[var(--brand)]">
-             Cart🛒
+            {/* ✅ Cart link with SAME hover underline as others */}
+            <Link
+              to="/cart"
+              className="relative px-1 text-gray-700 transition duration-300 hover:text-[var(--brand)] 
+                after:content-[''] after:absolute after:w-0 after:h-[2px] after:bg-[var(--brand)] 
+                after:left-0 after:-bottom-1 after:transition-all after:duration-300 hover:after:w-full"
+            >
+              Cart 🛒
               {cart.length > 0 && (
                 <span className="absolute -top-2 -right-2 bg-[var(--brand)] text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full animate-bounce">
                   {cart.length}
@@ -139,13 +146,13 @@ export default function Navbar() {
               </Link>
             ))}
 
-            {/* ✅ Cart mobile */}
+            {/* Cart mobile */}
             <Link
               to="/cart"
               onClick={closeMenu}
-              className="block px-3 py-2 text-gray-700 hover:text-[var(--brand)] border-b border-transparent hover:border-[var(--brand)] relative"
+              className="block px-3 py-2 text-gray-700 transition duration-300 hover:text-[var(--brand)] border-b border-transparent hover:border-[var(--brand)] relative"
             >
-            🛒 Cart
+              🛒 Cart
               {cart.length > 0 && (
                 <span className="absolute top-1 left-16 bg-[var(--brand)] text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full animate-bounce">
                   {cart.length}

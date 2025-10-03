@@ -1,4 +1,3 @@
-// src/pages/Admin/UserDetail.jsx
 import React, { useContext, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext.jsx";
@@ -17,13 +16,13 @@ export default function UserDetail() {
 
   if (!user) {
     return (
-      <div className="max-w-3xl mx-auto p-6 bg-white rounded-xl shadow mt-6 text-center">
-        <h2 className="text-xl font-semibold mb-4 text-red-500">
+      <div className="max-w-3xl mx-auto p-4 sm:p-6 bg-white rounded-xl shadow mt-6 text-center">
+        <h2 className="text-lg sm:text-xl font-semibold mb-4 text-red-500">
           ⚠️ User not found
         </h2>
         <button
           onClick={() => navigate(-1)}
-          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition text-sm sm:text-base"
         >
           Back
         </button>
@@ -32,36 +31,46 @@ export default function UserDetail() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 bg-white rounded-xl shadow mt-6">
-      <h2
-        className="text-2xl font-bold mb-6 text-center bg-gradient-to-r from-[var(--brand)] to-[var(--accent)] bg-clip-text text-transparent"
-      >
-        User Details
-      </h2>
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 bg-white rounded-xl shadow mt-6">
+  <h2 className="text-xl sm:text-2xl font-bold mb-6 text-center bg-gradient-to-r from-[var(--brand)] to-[var(--accent)] bg-clip-text text-transparent">
+    User Details
+  </h2>
 
-      <div className="space-y-3 text-sm sm:text-base">
-        <p>
-          <strong>ID:</strong> {user.id}
-        </p>
-        <p>
-          <strong>Name:</strong> {user.firstName} {user.lastName}
-        </p>
-        <p>
-          <strong>Email:</strong> {user.email}
-        </p>
-        <p>
-          <strong>Role:</strong> {user.role}
-        </p>
-      </div>
+  {/* Wrapper with scroll */}
+  <div className="overflow-x-auto ">
+    <table className="min-w-full text-sm sm:text-base">
+      <tbody>
+        <tr className="border-b">
+          <td className="p-2 font-semibold whitespace-nowrap">ID</td>
+          <td className="p-2 break-all">{user.id}</td>
+        </tr>
+        <tr className="border-b">
+          <td className="p-2 font-semibold whitespace-nowrap">Name</td>
+          <td className="p-2 whitespace-nowrap">
+            {user.firstName} {user.lastName}
+          </td>
+        </tr>
+        <tr className="border-b">
+          <td className="p-2 font-semibold whitespace-nowrap">Email</td>
+          <td className="p-2 break-all">{user.email}</td>
+        </tr>
+        <tr>
+          <td className="p-2 font-semibold whitespace-nowrap">Role</td>
+          <td className="p-2 capitalize">{user.role}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-      <div className="mt-6 text-center">
-        <button
-          onClick={() => navigate(-1)}
-          className="px-5 py-2 rounded-lg shadow font-semibold bg-[var(--brand)] text-white hover:opacity-90 transition"
-        >
-          ⬅ Back to Users
-        </button>
-      </div>
-    </div>
+  <div className="mt-6 text-center">
+    <button
+      onClick={() => navigate(-1)}
+      className="px-4 sm:px-5 py-2 rounded-lg shadow font-semibold bg-[var(--brand)] text-white hover:opacity-90 transition text-sm sm:text-base"
+    >
+      ⬅ Back to Users
+    </button>
+  </div>
+</div>
+
   );
 }

@@ -90,11 +90,8 @@ export default function AddProduct() {
     existing.unshift(newProduct);
     localStorage.setItem("custom_products", JSON.stringify(existing));
 
-    // notify other tabs and same-tab listeners
     try {
-      // native storage event will only fire in other windows/tabs, not this one,
-      // so we do both: setItem (above) + dispatch a custom event for same-tab listeners.
-      window.dispatchEvent(new Event("storage")); // helpful for some listeners expecting this
+      window.dispatchEvent(new Event("storage"));
     } catch {}
     window.dispatchEvent(new Event("custom_products_changed"));
 
@@ -103,9 +100,9 @@ export default function AddProduct() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-8 bg-white rounded-xl shadow">
+    <div className="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow">
       {/* Heading */}
-      <h1 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] bg-clip-text text-transparent">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-center bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] bg-clip-text text-transparent">
         Add New Product
       </h1>
 
@@ -139,14 +136,14 @@ export default function AddProduct() {
         />
 
         {/* Price + Discount */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input
             type="number"
             name="price"
             value={form.price}
             onChange={handleChange}
             placeholder="Price"
-            className="border px-3 py-2 rounded"
+            className="border px-3 py-2 rounded w-full"
             required
           />
           <input
@@ -155,18 +152,18 @@ export default function AddProduct() {
             value={form.discount}
             onChange={handleChange}
             placeholder="Discount (%)"
-            className="border px-3 py-2 rounded"
+            className="border px-3 py-2 rounded w-full"
             min="0"
             max="100"
           />
         </div>
 
-        {/* One Image Section (3 ways) */}
+        {/* Image Section */}
         <div>
           <label className="block font-medium mb-2">Add Image</label>
 
-          {/* URL / Google / Unsplash */}
-          <div className="flex gap-2 mb-3">
+          {/* URL */}
+          <div className="flex flex-col sm:flex-row gap-2 mb-3">
             <input
               value={imageInput}
               onChange={(e) => setImageInput(e.target.value)}
@@ -199,7 +196,7 @@ export default function AddProduct() {
         {message && <p className="text-green-600 text-sm">{message}</p>}
 
         {/* Preview */}
-        <div className="grid grid-cols-3 gap-2 mt-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
           {form.images.map((img, i) => (
             <div key={i} className="relative">
               <img

@@ -2,7 +2,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FaFacebookF, FaInstagram, FaTwitter } from "react-icons/fa";
+import { FaFacebookF, FaInstagram, FaWhatsapp } from "react-icons/fa";
 
 export default function Footer() {
   return (
@@ -80,14 +80,7 @@ export default function Footer() {
                 Register
               </Link>
             </li>
-            <li>
-              <Link
-                to="/success"
-                className="hover:text-[var(--brand)] transition"
-              >
-                Order Success
-              </Link>
-            </li>
+            {/* Removed Order Success link */}
           </ul>
         </div>
 
@@ -112,12 +105,12 @@ export default function Footer() {
               <FaInstagram />
             </a>
             <a
-              href="https://www.twitter.com"
+              href="https://wa.me/923056087065?text=Hello%20JewelRolins!%20I%20am%20interested%20in%20your%20jewelry.%20Can%20you%20share%20more%20details%3F"
               target="_blank"
               rel="noreferrer"
               className="p-2 rounded-full bg-gray-800 hover:bg-gradient-to-r hover:from-[var(--accent)] hover:to-[var(--brand)] hover:text-white transition-all duration-300"
             >
-              <FaTwitter />
+              <FaWhatsapp />
             </a>
           </div>
         </div>

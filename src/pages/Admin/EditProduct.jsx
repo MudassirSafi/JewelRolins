@@ -183,21 +183,25 @@ export default function EditProduct() {
         </div>
 
         {/* Save / Cancel */}
-        <div className="flex gap-3">
-          <button
-            type="submit"
-            className="flex-1 py-3 rounded-lg shadow font-semibold text-white bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] hover:opacity-90 transition"
-          >
-            💾 Save Changes
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/admin/dashboard")}
-            className="flex-1 py-3 rounded-lg shadow border hover:bg-gray-100 transition"
-          >
-            Cancel
-          </button>
-        </div>
+<div className="flex gap-2 sm:gap-3">
+  <button
+    type="submit"
+    className="flex-1 py-2 sm:py-3 rounded-lg shadow font-semibold text-white 
+               bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] 
+               hover:opacity-90 transition text-sm sm:text-base"
+  >
+    💾 Save Changes
+  </button>
+  <button
+    type="button"
+    onClick={() => navigate("/admin/dashboard")}
+    className="flex-1 py-2 sm:py-3 rounded-lg shadow border hover:bg-gray-100 
+               transition text-sm sm:text-base"
+  >
+    Cancel
+  </button>
+</div>
+
       </form>
     </motion.div>
   );

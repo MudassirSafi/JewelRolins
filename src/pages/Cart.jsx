@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { CartContext } from "../context/CartContext.jsx";
 import { motion } from "framer-motion";
 import Lottie from "lottie-react";
-import cartAnimation from "../assets/Shopping.json"; // ✅ local JSON
+import cartAnimation from "../assets/Shopping.json";
 
 export default function Cart() {
   const { cart, removeFromCart, clearCart, addToCart } = useContext(CartContext);
@@ -15,18 +15,18 @@ export default function Cart() {
     0
   );
 
-  // ✅ Empty cart animation
   if (!cart.length) {
     return (
-      <div className="max-w-4xl mx-auto p-8 text-center">
+      <div className="max-w-3xl mx-auto p-8 text-center">
         <h2 className="text-2xl font-bold mb-3">Your cart is empty</h2>
 
         <div className="flex justify-center mb-6">
+          {/* responsive Lottie size */}
           <Lottie
             animationData={cartAnimation}
             loop
             autoplay
-            style={{ height: 280, width: 280 }}
+            className="w-56 h-56 sm:w-72 sm:h-72"
           />
         </div>
 
@@ -40,7 +40,6 @@ export default function Cart() {
     );
   }
 
-  // ✅ Cart with items
   return (
     <motion.div
       className="max-w-5xl mx-auto px-3 py-10"
@@ -51,8 +50,9 @@ export default function Cart() {
         Your Cart
       </h1>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* cart items */}
+      {/* single column on mobile, 3 columns on md+ (items take 2 cols, summary 1 col) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Cart items list */}
         <div className="md:col-span-2 space-y-4">
           {cart.map((item) => {
             const orig = Number(item.originalPrice || item.price);
@@ -62,17 +62,19 @@ export default function Cart() {
             return (
               <div
                 key={item.id}
-                className="flex items-center gap-4 border rounded-lg p-3 bg-white shadow-sm"
+                className="flex flex-col sm:flex-row items-start sm:items-center gap-4 border rounded-lg p-3 bg-white shadow-sm"
               >
+                {/* responsive image: full width on mobile, fixed square on sm+ */}
                 <img
                   src={item.image}
                   alt={item.title}
-                  className="w-24 h-24 object-cover rounded"
+                  className="w-full sm:w-24 h-44 sm:h-24 object-cover rounded flex-shrink-0"
                 />
-                <div className="flex-1">
-                  <h3 className="font-semibold">{item.title}</h3>
 
-                  {/* ✅ discount display */}
+                {/* details: allow truncation by using min-w-0 */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold truncate">{item.title}</h3>
+
                   {disc > 0 ? (
                     <div className="text-sm">
                       <span className="line-through text-gray-500 mr-2">
@@ -89,16 +91,20 @@ export default function Cart() {
                     <p className="text-sm font-semibold">PKR {unit}</p>
                   )}
 
-                  {/* qty controls */}
-                  <div className="mt-2 flex items-center gap-2">
+                  {/* qty controls - flow naturally under details on mobile */}
+                  <div className="mt-3 sm:mt-2 flex items-center gap-2">
                     <button
+                      aria-label={`Decrease quantity of ${item.title}`}
                       onClick={() => addToCart(item, -1)}
                       className="px-3 py-1 border rounded hover:bg-gray-100"
                     >
                       −
                     </button>
+
                     <div className="px-3">{item.qty}</div>
+
                     <button
+                      aria-label={`Increase quantity of ${item.title}`}
                       onClick={() => addToCart(item, 1)}
                       className="px-3 py-1 border rounded hover:bg-gray-100"
                     >
@@ -107,14 +113,14 @@ export default function Cart() {
                   </div>
                 </div>
 
-                {/* item totals */}
-                <div className="text-right">
+                {/* item totals: tucked to the right on sm+; below on mobile */}
+                <div className="mt-3 sm:mt-0 sm:ml-4 sm:text-right flex-shrink-0 sm:w-32">
                   <div className="font-semibold">
-                    PKR {(unit * item.qty).toFixed(0)}
+                    PKR {(unit * (item.qty || 1)).toFixed(0)}
                   </div>
                   {disc > 0 && (
                     <div className="text-xs text-green-600">
-                      Saved PKR {((orig - unit) * item.qty).toFixed(0)}
+                      Saved PKR {((orig - unit) * (item.qty || 1)).toFixed(0)}
                     </div>
                   )}
                   <button
@@ -129,8 +135,8 @@ export default function Cart() {
           })}
         </div>
 
-        {/* summary */}
-        <aside className="border rounded-lg p-5 h-fit bg-white shadow-sm">
+        {/* Summary */}
+        <aside className="border rounded-lg p-5 h-fit bg-white shadow-sm md:sticky md:top-24">
           <div className="text-lg font-semibold mb-3">Order Summary</div>
           <div className="flex justify-between mb-2">
             <div>Subtotal</div>
