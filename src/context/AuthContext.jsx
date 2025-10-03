@@ -1,4 +1,3 @@
-// src/context/AuthContext.jsx
 import React, { createContext, useState, useEffect } from "react";
 
 export const AuthContext = createContext();
@@ -8,11 +7,6 @@ const CURRENT_USER_KEY = "muhi_user";
 
 /**
  * Simple client-side auth for demo/admin flow.
- * - Creates a default admin (admin@jewel.com / admin123) if none exists.
- * - Stores users in localStorage (muhi_users_v1).
- * - Stores current logged-in user in localStorage (muhi_user) (public-safe info only).
- *
- * NOTE: This is frontend-only, demo auth. For production, use backend auth + hashed passwords.
  */
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -55,7 +49,9 @@ export function AuthProvider({ children }) {
   }, [user]);
 
   /**
-   * login(email, password) -> returns true on success, false on failure (alerts user)
+   * login(email, password) -> returns true on success, false on failure
+   * Also migrates guest cart (muhi_cart_v1) to user's cart if needed and
+   * dispatches an in-app auth event so CartContext can react.
    */
   const login = (email, password) => {
     try {
@@ -66,10 +62,23 @@ export function AuthProvider({ children }) {
           (u.password || "") === password
       );
       if (!found) {
-        // friendly alert — Login page does immediate navigate so this helps user
         alert("Invalid email or password.");
         return false;
       }
+
+      // --- migrate guest cart if present and user's cart is empty ---
+      try {
+        const guestRaw = localStorage.getItem("muhi_cart_v1");
+        const userKey = `muhi_cart_${encodeURIComponent(found.email)}`;
+        const userRaw = localStorage.getItem(userKey);
+        if (guestRaw && (!userRaw || userRaw === "[]")) {
+          localStorage.setItem(userKey, guestRaw);
+          localStorage.removeItem("muhi_cart_v1");
+        }
+      } catch (e) {
+        // ignore migration errors
+      }
+
       const publicUser = {
         id: found.id,
         firstName: found.firstName,
@@ -78,8 +87,17 @@ export function AuthProvider({ children }) {
         role: found.role || "user",
         phone: found.phone || "",
       };
+
       setUser(publicUser);
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(publicUser));
+
+      // Dispatch an in-app auth event so CartContext updates immediately
+      try {
+        window.dispatchEvent(
+          new CustomEvent("muhi:auth-change", { detail: { user: publicUser } })
+        );
+      } catch (e) {}
+
       return true;
     } catch (e) {
       alert("Login failed (localStorage error).");
@@ -88,8 +106,8 @@ export function AuthProvider({ children }) {
   };
 
   /**
-   * register(payload) -> payload should include firstName, lastName, email, password, phone (optional)
-   * Registers as a normal "user" role. Does not auto-login.
+   * register(payload) -> creates user (does NOT auto-login).
+   * Also ensures new user has an empty per-user cart key.
    */
   const register = (payload) => {
     try {
@@ -114,7 +132,15 @@ export function AuthProvider({ children }) {
       };
       users.unshift(newUser);
       localStorage.setItem(USERS_KEY, JSON.stringify(users));
-      // small success hint
+
+      // create empty cart for new user
+      try {
+        const userCartKey = `muhi_cart_${encodeURIComponent(email)}`;
+        localStorage.setItem(userCartKey, JSON.stringify([]));
+      } catch (e) {
+        // ignore
+      }
+
       alert("Account created. You can now login.");
     } catch (e) {
       alert("Registration failed (localStorage error).");
@@ -126,6 +152,13 @@ export function AuthProvider({ children }) {
     try {
       localStorage.removeItem(CURRENT_USER_KEY);
     } catch {}
+
+    // notify CartContext (and others) that user is now null
+    try {
+      window.dispatchEvent(
+        new CustomEvent("muhi:auth-change", { detail: { user: null } })
+      );
+    } catch (e) {}
   };
 
   const getAllUsers = () => {

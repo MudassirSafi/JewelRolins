@@ -1,4 +1,3 @@
-// src/pages/Register.jsx
 import React, { useState, useContext } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext.jsx";
@@ -40,7 +39,7 @@ export default function Register() {
       return;
     }
 
-    // ✅ call context register
+    // ✅ call context register (will create an empty per-user cart)
     register(form);
 
     // redirect after register

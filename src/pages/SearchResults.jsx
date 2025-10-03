@@ -1,4 +1,3 @@
-// src/pages/SearchResults.jsx 
 import React, { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { getProducts } from "../services/api.js";
@@ -35,6 +34,8 @@ export default function SearchResults() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const normalize = (txt) => (txt || "").toLowerCase().trim();
+
   useEffect(() => {
     let mounted = true;
     setLoading(true);
@@ -43,18 +44,18 @@ export default function SearchResults() {
       .then((data) => {
         if (!mounted) return;
         const all = Array.isArray(data) ? data : [];
+        const query = normalize(q);
 
-        // lowercase query
-        const query = q.toLowerCase().trim();
-
+        // ✅ Smart partial + plural search
         const matches = all.filter((p) => {
-          const title = (p.title || "").toLowerCase();
-          const category = (p.category || "").toLowerCase();
+          const title = normalize(p.title);
+          const category = normalize(p.category);
 
-          // ✅ check if query matches title or category
           return (
             title.includes(query) ||
-            category.includes(query)
+            category.includes(query) ||
+            title.startsWith(query) ||
+            category.startsWith(query)
           );
         });
 
@@ -78,7 +79,7 @@ export default function SearchResults() {
       {loading ? (
         <div className="text-center py-12">Searching…</div>
       ) : products.length ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md-grid-cols-4 gap-4">
           {products.map((p) => (
             <ProductCard key={p.id} p={p} />
           ))}

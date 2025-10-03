@@ -38,10 +38,16 @@ export default function App() {
   // check if current route is an admin route
   const isAdminPage = location.pathname.toLowerCase().startsWith("/admin");
 
+  // check if current route is login or register
+  const isAuthPage =
+    location.pathname === "/login" || location.pathname === "/register";
+
+  // hide navbar/footer on admin, login, and register pages
+  const hideLayout = isAdminPage || isAuthPage;
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* ✅ Show Navbar & Footer only for non-admin routes */}
-      {!isAdminPage && <Navbar />}
+      {!hideLayout && <Navbar />}
 
       <main className="flex-1">
         <AnimatePresence mode="wait">
@@ -52,7 +58,6 @@ export default function App() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.4 }}
           >
-
             <Routes location={location} key={location.pathname}>
               {/* Public Routes */}
               <Route path="/" element={<Home />} />
@@ -81,7 +86,6 @@ export default function App() {
                 <Route path="orders" element={<Orders />} />
                 <Route path="users" element={<Users />} />
                 <Route path="users/:id" element={<UserDetail />} />
-
               </Route>
 
               {/* 404 Page */}
@@ -103,7 +107,7 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {!isAdminPage && <Footer />}
+      {!hideLayout && <Footer />}
     </div>
   );
 }

@@ -1,5 +1,4 @@
-// src/pages/Login.jsx
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext.jsx";
 
@@ -7,10 +6,18 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const { login } = useContext(AuthContext);
+  const { login, user } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/";
+
+  // If already logged in, redirect away from login page
+  useEffect(() => {
+    if (user) {
+      if (user.role === "admin") navigate("/admin/dashboard", { replace: true });
+      else navigate("/", { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -22,10 +29,10 @@ export default function Login() {
       return;
     }
 
-    // ✅ get current logged in user
+    // get current logged in user
     const currentUser = JSON.parse(localStorage.getItem("muhi_user"));
 
-    // ✅ role-based redirect
+    // role-based redirect
     if (currentUser?.role === "admin") {
       navigate("/admin/dashboard", { replace: true });
     } else {
@@ -35,15 +42,11 @@ export default function Login() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-xl shadow w-full max-w-md"
-      >
+      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow w-full max-w-md">
         <h2 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] bg-clip-text text-transparent">
           Login
         </h2>
 
-        {/* Email input */}
         <div className="mb-4">
           <label className="block mb-1 text-gray-700">Email</label>
           <input
@@ -55,7 +58,6 @@ export default function Login() {
           />
         </div>
 
-        {/* Password input */}
         <div className="mb-4">
           <label className="block mb-1 text-gray-700">Password</label>
           <input
@@ -67,18 +69,12 @@ export default function Login() {
           />
         </div>
 
-        {/* Error message */}
         {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
 
-        {/* Submit button */}
-        <button
-          type="submit"
-          className="w-full bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] hover:opacity-90 text-white font-semibold py-2 rounded transition"
-        >
+        <button type="submit" className="w-full bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] hover:opacity-90 text-white font-semibold py-2 rounded transition">
           Login
         </button>
 
-        {/* Register link */}
         <p className="text-center text-sm text-gray-600 mt-4">
           Don’t have an account?{" "}
           <Link to="/register" className="text-[var(--brand)] hover:underline">
