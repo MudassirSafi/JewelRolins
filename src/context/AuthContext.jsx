@@ -1,192 +1,179 @@
+// ...existing code...
 import React, { createContext, useState, useEffect } from "react";
+import api, { setAuthToken } from "../services/axiosConfig.js";
 
 export const AuthContext = createContext();
 
-const USERS_KEY = "muhi_users_v1";
 const CURRENT_USER_KEY = "muhi_user";
+const USERS_KEY = "muhi_users_v1";
 
-/**
- * Simple client-side auth for demo/admin flow.
- */
+// ...existing code...
+function normalizeUser(raw) {
+  if (!raw) return null;
+  // handle string input
+  const u = typeof raw === "string" ? JSON.parse(raw) : { ...raw };
+
+  // pull token from possible places
+  const token = u.token ?? u.accessToken ?? u.jwt ?? u._token ?? null;
+
+  // ensure id is available as _id
+  const idFromBody =
+    u._id ?? u.id ?? u.userId ?? (u.user && (u.user._id ?? u.user.id)) ?? null;
+
+  // build combined name safely and avoid mixing ?? with ||/&& in same expression
+  const combined = `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim();
+  const name = u.name ?? (combined || u.email || "");
+  const email = u.email ?? (u.user ? u.user.email : "") ?? "";
+
+  return {
+    ...u,
+    _id: idFromBody,
+    id: idFromBody,
+    token,
+    name,
+    email,
+  };
+}
+// ...existing code...
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
       const raw = localStorage.getItem(CURRENT_USER_KEY);
-      return raw ? JSON.parse(raw) : null;
+      return raw ? normalizeUser(JSON.parse(raw)) : null;
     } catch {
       return null;
     }
   });
 
-  // ensure default admin exists
+  // persist current user + ensure axios auth header is set
+  useEffect(() => {
+    try {
+      if (user) {
+        // store the normalized user (avoid circulars)
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+        if (user.token) setAuthToken(user.token);
+        else setAuthToken(null);
+      } else {
+        localStorage.removeItem(CURRENT_USER_KEY);
+        setAuthToken(null);
+      }
+    } catch (e) {}
+  }, [user]);
+
+  // ensure an admin exists in local fallback users (preserve prior behaviour)
   useEffect(() => {
     try {
       const existing = JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
-      const adminExists = existing.some((u) => u.email === "admin@jewel.com");
-      if (!adminExists) {
+      if (!existing || existing.length === 0) {
         const admin = {
-          id: `u_admin`,
-          firstName: "Admin",
-          lastName: "User",
-          email: "admin@jewel.com",
+          name: "Admin",
+          email: "admin@local",
           password: "admin123",
           phone: "",
           role: "admin",
         };
         localStorage.setItem(USERS_KEY, JSON.stringify([admin, ...existing]));
       }
-    } catch (e) {
-      // noop
-    }
+    } catch (e) {}
   }, []);
 
-  // persist current user
-  useEffect(() => {
+  // Login using backend only (no localStorage fallback)
+  const login = async (email, password) => {
     try {
-      if (user) localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-      else localStorage.removeItem(CURRENT_USER_KEY);
-    } catch {}
-  }, [user]);
+      const payload = { email, password };
+      const resp = await api.post("/api/users/signin", payload);
+      if (resp && resp.data) {
+        const serverUser = resp.data.user ?? resp.data;
+        const token = resp.data.token ?? resp.data.accessToken ?? serverUser.token ?? null;
+        const saved = normalizeUser({ ...serverUser, token });
+        setUser(saved);
 
-  /**
-   * login(email, password) -> returns true on success, false on failure
-   * Also migrates guest cart (muhi_cart_v1) to user's cart if needed and
-   * dispatches an in-app auth event so CartContext can react.
-   */
-  const login = (email, password) => {
-    try {
-      const users = JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
-      const found = users.find(
-        (u) =>
-          (u.email || "").toLowerCase() === (email || "").toLowerCase() &&
-          (u.password || "") === password
-      );
-      if (!found) {
-        alert("Invalid email or password.");
+        // migrate guest cart if present and user's cart is empty (best-effort)
+        try {
+          const guestRaw = localStorage.getItem("muhi_cart_v1");
+          const userKey = `muhi_cart_${encodeURIComponent(saved.email || saved.name || "user")}`;
+          const userRaw = localStorage.getItem(userKey);
+          if (guestRaw && (!userRaw || userRaw === "[]")) {
+            localStorage.setItem(userKey, guestRaw);
+            localStorage.removeItem("muhi_cart_v1");
+          }
+        } catch (e) {}
+
+        return true;
+      } else {
         return false;
       }
-
-      // --- migrate guest cart if present and user's cart is empty ---
-      try {
-        const guestRaw = localStorage.getItem("muhi_cart_v1");
-        const userKey = `muhi_cart_${encodeURIComponent(found.email)}`;
-        const userRaw = localStorage.getItem(userKey);
-        if (guestRaw && (!userRaw || userRaw === "[]")) {
-          localStorage.setItem(userKey, guestRaw);
-          localStorage.removeItem("muhi_cart_v1");
-        }
-      } catch (e) {
-        // ignore migration errors
+    } catch (err) {
+      if (err?.response?.data?.message) {
+        alert(err.response.data.message);
       }
-
-      const publicUser = {
-        id: found.id,
-        firstName: found.firstName,
-        lastName: found.lastName,
-        email: found.email,
-        role: found.role || "user",
-        phone: found.phone || "",
-      };
-
-      setUser(publicUser);
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(publicUser));
-
-      // Dispatch an in-app auth event so CartContext updates immediately
-      try {
-        window.dispatchEvent(
-          new CustomEvent("muhi:auth-change", { detail: { user: publicUser } })
-        );
-      } catch (e) {}
-
-      return true;
-    } catch (e) {
-      alert("Login failed (localStorage error).");
       return false;
     }
   };
 
-  /**
-   * register(payload) -> creates user (does NOT auto-login).
-   * Also ensures new user has an empty per-user cart key.
-   */
-  const register = (payload) => {
+  // Register using backend only (no localStorage fallback)
+  const register = async (form) => {
     try {
-      const email = (payload.email || "").toLowerCase();
-      if (!email) {
-        alert("Please provide an email.");
-        return;
-      }
-      const users = JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
-      if (users.some((u) => (u.email || "").toLowerCase() === email)) {
-        alert("An account with this email already exists.");
-        return;
-      }
-      const newUser = {
-        id: `u_${Date.now()}`,
-        firstName: payload.firstName || "",
-        lastName: payload.lastName || "",
-        email,
-        password: payload.password || "",
-        phone: payload.phone || "",
-        role: "user",
+      const name = `${form.firstName || ""} ${form.lastName || ""}`.trim();
+      const payload = {
+        name,
+        email: form.email,
+        phone: form.phone || "",
+        password: form.password,
       };
-      users.unshift(newUser);
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
 
-      // create empty cart for new user
-      try {
-        const userCartKey = `muhi_cart_${encodeURIComponent(email)}`;
-        localStorage.setItem(userCartKey, JSON.stringify([]));
-      } catch (e) {
-        // ignore
+      const resp = await api.post("/api/users/signup", payload);
+      if (resp && resp.data) {
+        const created = resp.data.user ?? resp.data;
+        const token = resp.data.token ?? resp.data.accessToken ?? created.token ?? null;
+        const saved = normalizeUser({ ...created, token });
+        setUser(saved);
+        return saved;
+      } else {
+        return null;
       }
-
-      alert("Account created. You can now login.");
-    } catch (e) {
-      alert("Registration failed (localStorage error).");
+    } catch (err) {
+      if (err?.response?.data?.message) {
+        alert(err.response.data.message);
+      }
+      return null;
     }
   };
 
-  const logout = () => {
-    setUser(null);
+  // Get all users from backend (admin only)
+  const getAllUsers = async () => {
     try {
-      localStorage.removeItem(CURRENT_USER_KEY);
-    } catch {}
-
-    // notify CartContext (and others) that user is now null
-    try {
-      window.dispatchEvent(
-        new CustomEvent("muhi:auth-change", { detail: { user: null } })
-      );
-    } catch (e) {}
-  };
-
-  const getAllUsers = () => {
-    try {
-      return JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
-    } catch {
+      const resp = await api.get("/api/users/getAllUse");
+      if (resp && resp.data && resp.data.users) {
+        return resp.data.users;
+      }
+      return [];
+    } catch (err) {
+      console.error("Error fetching users:", err?.response?.data?.message || err.message);
       return [];
     }
   };
-
-  const updateUserRole = (id, role) => {
-    try {
-      const users = JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
-      const idx = users.findIndex((u) => u.id === id);
-      if (idx === -1) return false;
-      users[idx].role = role;
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
-      return true;
-    } catch {
-      return false;
-    }
-  };
+const logout = () => {
+  setUser(null);
+  setAuthToken(null);
+  localStorage.removeItem(CURRENT_USER_KEY);
+  navigate("/"); // 👈 Redirects user to homepage
+};
 
   return (
     <AuthContext.Provider
-      value={{ user, login, register, logout, getAllUsers, updateUserRole }}
+      value={{
+        user,
+        setUser,
+        login,
+        register,
+        logout,
+        getAllUsers,
+      }}
     >
       {children}
     </AuthContext.Provider>
   );
 }
+// ...existing code...

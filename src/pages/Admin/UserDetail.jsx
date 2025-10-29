@@ -1,18 +1,24 @@
+import api from "../../services/axiosConfig";
 import React, { useContext, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext.jsx";
 
 export default function UserDetail() {
   const { id } = useParams();
+   console.log("Route param id:", id); // ✅ log the ID
   const navigate = useNavigate();
-  const { getAllUsers } = useContext(AuthContext);
+ // const { getAllUsers } = useContext(AuthContext);
   const [user, setUser] = useState(null);
 
-  useEffect(() => {
-    const users = getAllUsers();
-    const found = users.find((u) => u.id.toString() === id.toString());
-    setUser(found);
-  }, [id, getAllUsers]);
+ useEffect(() => {
+   console.log("Route param id:", id); // ✅ log the ID
+  if (!id) return; // prevent API call if id is undefined
+
+  api.get(`/api/users/${id}`)
+    .then(res => setUser(res.data.user))
+    .catch(() => setUser(null));
+}, [id]);
+
 
   if (!user) {
     return (
@@ -42,12 +48,12 @@ export default function UserDetail() {
       <tbody>
         <tr className="border-b">
           <td className="p-2 font-semibold whitespace-nowrap">ID</td>
-          <td className="p-2 break-all">{user.id}</td>
+          <td className="p-2 break-all">{user._id}</td>
         </tr>
         <tr className="border-b">
           <td className="p-2 font-semibold whitespace-nowrap">Name</td>
           <td className="p-2 whitespace-nowrap">
-            {user.firstName} {user.lastName}
+            {user.name} 
           </td>
         </tr>
         <tr className="border-b">

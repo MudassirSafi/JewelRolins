@@ -23,7 +23,7 @@ import About from "./pages/About.jsx";
 // Admin Pages (all lowercase folder)
 import AddProduct from "./pages/admin/AddProduct.jsx";
 import EditProduct from "./pages/admin/EditProduct.jsx";
-import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
+import AdminDashboard from "./pages/Admin/AdminDashboard.jsx";
 import Orders from "./pages/admin/Orders.jsx";
 import Users from "./pages/admin/Users.jsx";
 import UserDetail from "./pages/admin/UserDetail.jsx";

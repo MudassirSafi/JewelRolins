@@ -21,7 +21,8 @@ export default function Register() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+// ...existing code...
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
@@ -40,10 +41,13 @@ export default function Register() {
     }
 
     // ✅ call context register (will create an empty per-user cart)
-    register(form);
-
-    // redirect after register
-    navigate("/login");
+    const result = await register(form);
+    if (result) {
+      // redirect after register only if successful
+      navigate("/login");
+    } else {
+      setError("Registration failed. Please check your details or try again.");
+    }
   };
 
   return (

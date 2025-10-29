@@ -1,9 +1,7 @@
-// src/components/Hero.jsx
 import React from "react";
 import { motion } from "framer-motion";
 
 export default function Hero() {
-  // Smooth scroll handler for "New Collection"
   const handleScroll = (e) => {
     e.preventDefault();
     const target = document.querySelector("#our-products");
@@ -13,67 +11,58 @@ export default function Hero() {
   };
 
   return (
-    <section className="grid md:grid-cols-2 items-center gap-6 sm:gap-10 pt-6 sm:pt-8 mb-8 sm:mb-12">
-      {/* left text with animation */}
+    <section className="grid md:grid-cols-2 items-center gap-10 py-10 sm:py-16">
+      {/* Text Content */}
       <motion.div
-        initial={{ opacity: 0, x: -40 }}
-        animate={{ opacity: 1, x: 0 }}
+        initial={{ opacity: 0, y: -40 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        <h1 className="text-3xl sm:text-5xl font-extrabold leading-snug flex items-center gap-2">
+        <h1 className="text-4xl sm:text-6xl font-extrabold leading-snug mb-4">
+          Discover
+          <br />
           <span className="bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] bg-clip-text text-transparent">
-            Luxury Jewelry
+            Timeless Jewelry
           </span>
-          {/* Animated heart */}
-          <motion.span
-            role="img"
-            aria-label="heart"
-            animate={{ scale: [1, 1.3, 1] }}
-            transition={{
-              duration: 1.2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="text-pink-500"
-          >
-            ❤️
-          </motion.span>
         </h1>
 
-        <h2 className="text-2xl sm:text-4xl font-bold mt-1 sm:mt-2 bg-gradient-to-r from-[var(--brand)] to-[var(--accent)] bg-clip-text text-transparent">
-          Crafted with Love
-        </h2>
-
-        <p className="mt-3 text-gray-600 max-w-md text-base sm:text-lg">
-          Discover timeless elegance with our handcrafted rings, necklaces,
-          earrings, and watches. Each piece is designed with passion and
-          crafted to perfection.
+        <p className="text-gray-600 text-base sm:text-lg leading-relaxed max-w-md">
+          Elegance. Passion. Craftsmanship. Find unique, hand-crafted jewelry
+          that defines your style and enhances your beauty.
         </p>
 
-        <a
-          href="#our-products"
-          onClick={handleScroll}
-          className="inline-block mt-5 px-6 py-3 rounded-lg shadow font-semibold text-white bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] hover:opacity-90 transition"
-        >
-          New Collection
-        </a>
+        <div className="mt-6 flex gap-4">
+          <a
+            href="#our-products"
+            onClick={handleScroll}
+            className="px-6 py-3 rounded-full text-white font-semibold bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] shadow-md hover:opacity-90 transition"
+          >
+            Explore Collection
+          </a>
+
+          <a
+            href="/about"
+            className="px-6 py-3 rounded-full border border-[var(--brand)] text-[var(--brand)] font-semibold hover:bg-[var(--brand)] hover:text-white transition"
+          >
+            Learn More
+          </a>
+        </div>
       </motion.div>
 
-      {/* right image with animation + hover effect */}
+      {/* Hero Image */}
       <motion.div
-        initial={{ opacity: 0, x: 40 }}
-        animate={{ opacity: 1, x: 0 }}
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
         className="flex justify-center"
       >
-        <div className="relative group rounded-lg overflow-hidden shadow-lg w-full max-w-md sm:max-w-lg h-[320px] sm:h-[400px]">
+        <div className="relative w-full max-w-md">
+          <div className="absolute inset-0 bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] blur-3xl opacity-30 rounded-full -z-10" />
           <img
-            src="https://images.unsplash.com/photo-1590370094718-6003d268a11d?q=80&w=1332&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-            alt="Luxury Jewelry"
-            className="w-full h-full object-cover rounded-lg transition-transform duration-700 group-hover:scale-110 group-hover:rotate-1"
+            src="/src/assets/JeweRolin.png"
+            alt="Hero"
+            className="w-full h-auto rounded-2xl shadow-2xl hover:scale-[1.02] transition-transform"
           />
-          {/* overlay */}
-          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition duration-500 rounded-lg"></div>
         </div>
       </motion.div>
     </section>

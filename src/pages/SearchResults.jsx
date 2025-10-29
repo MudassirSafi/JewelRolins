@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { getProducts } from "../services/api.js";
+import api from "../services/axiosConfig";
 import { motion } from "framer-motion";
 
 function useQuery() {
@@ -16,13 +16,13 @@ function ProductCard({ p }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
     >
-      <Link to={`/product/${p.id}`}>
+      <Link to={`/product/${p._id}`}>
         <img
-          src={p.image}
-          alt={p.title}
+          src={p.images?.[0] || ""}
+          alt={p.name}
           className="w-full h-48 object-cover rounded"
         />
-        <h3 className="mt-2 font-semibold">{p.title}</h3>
+        <h3 className="mt-2 font-semibold">{p.name}</h3>
         <div className="text-gray-600">PKR {p.price}</div>
       </Link>
     </motion.div>
@@ -40,17 +40,16 @@ export default function SearchResults() {
     let mounted = true;
     setLoading(true);
 
-    getProducts()
-      .then((data) => {
+    api.get("/api/products")
+      .then((res) => {
         if (!mounted) return;
-        const all = Array.isArray(data) ? data : [];
+        const all = Array.isArray(res.data.products) ? res.data.products : [];
         const query = normalize(q);
 
-        // ✅ Smart partial + plural search
+        // Smart partial + plural search
         const matches = all.filter((p) => {
-          const title = normalize(p.title);
+          const title = normalize(p.name);
           const category = normalize(p.category);
-
           return (
             title.includes(query) ||
             category.includes(query) ||
@@ -75,13 +74,12 @@ export default function SearchResults() {
           "{q}"
         </span>
       </h1>
-
       {loading ? (
         <div className="text-center py-12">Searching…</div>
       ) : products.length ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md-grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {products.map((p) => (
-            <ProductCard key={p.id} p={p} />
+            <ProductCard key={p._id} p={p} />
           ))}
         </div>
       ) : (

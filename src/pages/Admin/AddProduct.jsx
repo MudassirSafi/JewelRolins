@@ -1,7 +1,9 @@
+// src/pages/admin/AddProduct.jsx
+import api from "../../services/axiosConfig";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-// ✅ normalize category input
+// normalize category input
 function normalizeCategory(input) {
   if (!input) return "";
   const normalized = input.trim().toLowerCase();
@@ -14,9 +16,9 @@ function normalizeCategory(input) {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
-// ✅ Convert Google Drive share link → direct image link
+// Convert Google Drive share link → direct image link
 const normalizeDriveLink = (url) => {
-  const match = url.match(/[-\w]{25,}/);
+  const match = url && url.match(/[-\w]{25,}/);
   if (match) return `https://drive.google.com/uc?export=view&id=${match[0]}`;
   return url;
 };
@@ -37,77 +39,106 @@ export default function AddProduct() {
   const handleChange = (e) =>
     setForm((s) => ({ ...s, [e.target.name]: e.target.value }));
 
-  // ✅ Add image from URL/Google/Unsplash
   const addImageUrl = () => {
     if (!imageInput) return;
     const url = normalizeDriveLink(imageInput.trim());
-    setForm((s) => ({ ...s, images: [...s.images, url] }));
+    if (!url) {
+      setMessage("Invalid URL");
+      return;
+    }
+    setForm((s) => ({ ...s, images: [...s.images, { src: url }] }));
     setImageInput("");
     setMessage("✅ Image added.");
   };
 
-  // ✅ Upload from PC
   const handleFileUpload = (e) => {
-    const files = Array.from(e.target.files);
+    const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setForm((s) => ({ ...s, images: [...s.images, reader.result] }));
-      };
-      reader.readAsDataURL(file);
-    });
+    const toAdd = files.map((file) => ({
+      src: URL.createObjectURL(file),
+      file,
+    }));
+    setForm((s) => ({ ...s, images: [...s.images, ...toAdd] }));
     setMessage("✅ Local image(s) added.");
   };
 
   const handleRemoveImage = (i) => {
     const copy = [...form.images];
-    copy.splice(i, 1);
+    const removed = copy.splice(i, 1)[0];
+    if (removed?.file && removed.src && removed.src.startsWith("blob:")) {
+      try {
+        URL.revokeObjectURL(removed.src);
+      } catch {}
+    }
     setForm((s) => ({ ...s, images: copy }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  function dataURLtoFile(dataurl, filename) {
+    const arr = dataurl.split(",");
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+    const bstr = atob(arr[1] || "");
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  }
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     const cleanCategory = normalizeCategory(form.category);
-    const existing = JSON.parse(localStorage.getItem("custom_products") || "[]");
     const price = Number(form.price || 0);
     const discount = Number(form.discount || 0);
-    const finalPrice = Math.round((price * (1 - discount / 100)) * 100) / 100;
 
-    const newProduct = {
-      id: `lp_${Date.now()}`,
-      title: form.title || "Untitled",
-      description: form.description || "",
-      price,
-      discount,
-      finalPrice,
-      category: cleanCategory || "Uncategorized",
-      images: form.images || [],
-      createdAt: new Date().toISOString(),
-    };
+    const formData = new FormData();
+    formData.append("name", form.title);
+    formData.append("description", form.description || "");
+    formData.append("price", price);
+    formData.append("discount", discount);
+    formData.append("category", cleanCategory || "Uncategorized");
 
-    existing.unshift(newProduct);
-    localStorage.setItem("custom_products", JSON.stringify(existing));
+    const urlList = [];
+
+    form.images.forEach((imageObj, index) => {
+      const imgSrc = typeof imageObj === "string" ? imageObj : imageObj?.src;
+      const file = imageObj?.file;
+
+      if (file instanceof File) {
+        formData.append("images", file);
+      } else if (typeof imgSrc === "string" && imgSrc.startsWith("data:")) {
+        const fileFromData = dataURLtoFile(imgSrc, `image-${Date.now()}-${index}.jpg`);
+        formData.append("images", fileFromData);
+      } else if (typeof imgSrc === "string" && imgSrc) {
+        urlList.push(imgSrc);
+      }
+    });
+
+    if (urlList.length > 0) {
+      formData.append("imageUrls", JSON.stringify(urlList));
+    }
 
     try {
-      window.dispatchEvent(new Event("storage"));
-    } catch {}
-    window.dispatchEvent(new Event("custom_products_changed"));
-
-    alert("✅ Product added.");
-    navigate("/admin/dashboard");
+      // Do NOT set Content-Type header here — let browser set boundary
+      await api.post("/api/products", formData);
+      alert("✅ Product added.");
+      navigate("/admin/dashboard");
+    } catch (err) {
+      // better error message handling
+      console.error("Add product error:", err.response?.data || err.message || err);
+      const msg = err.response?.data?.message || err.normalizedMessage || err.message || "Error adding product";
+      alert("Error adding product: " + msg);
+    }
   };
 
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow">
-      {/* Heading */}
       <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-center bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] bg-clip-text text-transparent">
         Add New Product
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Title */}
         <input
           name="title"
           value={form.title}
@@ -117,7 +148,6 @@ export default function AddProduct() {
           required
         />
 
-        {/* Description */}
         <textarea
           name="description"
           value={form.description}
@@ -126,7 +156,6 @@ export default function AddProduct() {
           className="w-full border px-3 py-2 rounded"
         />
 
-        {/* Category */}
         <input
           name="category"
           value={form.category}
@@ -135,7 +164,6 @@ export default function AddProduct() {
           className="w-full border px-3 py-2 rounded"
         />
 
-        {/* Price + Discount */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input
             type="number"
@@ -158,11 +186,9 @@ export default function AddProduct() {
           />
         </div>
 
-        {/* Image Section */}
         <div>
           <label className="block font-medium mb-2">Add Image</label>
 
-          {/* URL */}
           <div className="flex flex-col sm:flex-row gap-2 mb-3">
             <input
               value={imageInput}
@@ -179,7 +205,6 @@ export default function AddProduct() {
             </button>
           </div>
 
-          {/* Upload from PC */}
           <label className="px-4 py-2 border rounded cursor-pointer inline-block">
             Upload from PC
             <input
@@ -192,30 +217,31 @@ export default function AddProduct() {
           </label>
         </div>
 
-        {/* Status */}
         {message && <p className="text-green-600 text-sm">{message}</p>}
 
-        {/* Preview */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
-          {form.images.map((img, i) => (
-            <div key={i} className="relative">
-              <img
-                src={img}
-                alt={`preview-${i}`}
-                className="w-full h-24 object-cover rounded border"
-              />
-              <button
-                type="button"
-                onClick={() => handleRemoveImage(i)}
-                className="absolute top-1 right-1 bg-black/70 text-white text-xs px-2 py-1 rounded"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
+          {form.images.map((imgObj, i) => {
+            const src = typeof imgObj === "string" ? imgObj : imgObj?.src;
+            if (!src) return null; // avoid empty src warnings
+            return (
+              <div key={i} className="relative">
+                <img
+                  src={src}
+                  alt={`preview-${i}`}
+                  className="w-full h-24 object-cover rounded border"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveImage(i)}
+                  className="absolute top-1 right-1 bg-black/70 text-white text-xs px-2 py-1 rounded"
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Save Button */}
         <button
           type="submit"
           className="w-full py-3 rounded-lg shadow font-semibold text-white bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] hover:opacity-90 transition"

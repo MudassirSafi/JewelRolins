@@ -1,19 +1,10 @@
-// src/pages/Success.jsx
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 
 export default function Success() {
-  const [order, setOrder] = useState(null);
-
-  useEffect(() => {
-    // get order details from localStorage
-    const savedOrder = localStorage.getItem("lastOrder");
-    if (savedOrder) {
-      setOrder(JSON.parse(savedOrder));
-      localStorage.removeItem("lastOrder"); // clear after showing
-    }
-  }, []);
+  const { state } = useLocation();
+  const order = state?.order;
 
   return (
     <motion.div
@@ -30,34 +21,30 @@ export default function Success() {
       {order ? (
         <div className="text-left bg-white shadow rounded-lg p-6 mb-8">
           <h2 className="text-xl font-semibold mb-3">
-            Thank you, {order.name}!
+            Thank you, {order.user?.name || "Customer"}!
           </h2>
-
           <p className="text-gray-700 mb-1">
-            <span className="font-medium">Order ID:</span> {order.id}
+            <span className="font-medium">Order ID:</span> {order._id}
           </p>
           <p className="text-gray-700 mb-4">
             <span className="font-medium">Estimated Delivery:</span>{" "}
-            {order.delivery}
+            {order.delivery || "3-5 days"}
           </p>
-
           <p className="text-gray-700 mb-2">Your order will be shipped to:</p>
           <p className="text-gray-600 mb-4">
-            {order.address}, {order.city} <br />
-            📞 {order.phone}
+            {order.address}
           </p>
-
           <div className="border-t pt-3">
             <h3 className="font-semibold mb-2">Order Summary:</h3>
-            {order.items?.map((item) => (
+            {order.products?.map((item) => (
               <div
-                key={item.id}
+                key={item.productId}
                 className="flex justify-between text-sm border-b py-1"
               >
                 <span>
-                  {item.title} × {item.qty}
+                  {item.product?.name || "Product"} × {item.quantity}
                 </span>
-                <span>PKR {(item.price * item.qty).toFixed(0)}</span>
+                <span>PKR {(item.price * item.quantity).toFixed(0)}</span>
               </div>
             ))}
             <div className="flex justify-between font-semibold mt-3">

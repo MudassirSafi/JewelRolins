@@ -1,21 +1,57 @@
 // src/pages/Admin/Users.jsx
 import React, { useContext, useState, useEffect } from "react";
-import { AuthContext } from "../../context/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
+import api from "../../services/axiosConfig";
+import { AuthContext } from "../../context/AuthContext.jsx";
 
 export default function Users() {
-  const { getAllUsers, updateUserRole } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
   const navigate = useNavigate();
 
+  // ✅ Fetch all users
   useEffect(() => {
-    setUsers(getAllUsers());
-  }, [getAllUsers]);
+    const fetchUsers = async () => {
+      try {
+        // Get token from localStorage
+        const userData = JSON.parse(localStorage.getItem("muhi_user"));
+        const token = userData?.token;
 
-  const changeRole = (id, role) => {
+        const res = await api.get("/api/users/getAllUsers", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        console.log("Fetched users:", res.data);
+        setUsers(res.data.users || []);
+      } catch (err) {
+        console.error("Error fetching users:", err.response?.data || err.message);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  // ✅ Change Role
+  const changeRole = async (id, role) => {
     if (!window.confirm("Change user role?")) return;
-    updateUserRole(id, role);
-    setUsers(getAllUsers());
+
+    try {
+      const userData = JSON.parse(localStorage.getItem("muhi_user"));
+      const token = userData?.token;
+
+      await api.put(
+        `/api/users/${id}`,
+        { role },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const res = await api.get("/api/users/getAllUse", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setUsers(res.data.users || []);
+    } catch (err) {
+      alert("Error updating role: " + (err.response?.data?.message || err.message));
+    }
   };
 
   return (
@@ -30,14 +66,13 @@ export default function Users() {
         <div className="bg-white rounded-xl shadow overflow-hidden">
           {/* ---------- TABLE (shown on sm and up) ---------- */}
           <div className="hidden sm:block overflow-x-auto">
-            {/* table-fixed + column widths keep columns stable and prevent large growth */}
             <table className="min-w-full table-fixed w-full">
               <colgroup>
-                <col className="w-24" />       {/* ID */}
-                <col className="w-40 sm:w-48" />{/* Name */}
-                <col className="w-[35%]" />    {/* Email (flexable but constrained) */}
-                <col className="w-24" />       {/* Role */}
-                <col className="w-36" />       {/* Actions */}
+                <col className="w-24" />
+                <col className="w-40 sm:w-48" />
+                <col className="w-[35%]" />
+                <col className="w-24" />
+                <col className="w-36" />
               </colgroup>
 
               <thead className="bg-gray-50">
@@ -52,17 +87,19 @@ export default function Users() {
 
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-t hover:bg-gray-50">
+                  <tr key={u._id} className="border-t hover:bg-gray-50">
                     <td className="p-2 sm:p-3 align-top">
-                      <div className="max-w-[6rem] truncate text-sm" title={u.id}>
-                        {u.id}
+                      <div className="max-w-[6rem] truncate text-sm" title={u._id}>
+                        {u._id}
                       </div>
                     </td>
 
                     <td className="p-2 sm:p-3 align-top">
-                      {/* truncated name so it doesn't expand column */}
-                      <div className="max-w-[10rem] truncate font-medium" title={`${u.firstName} ${u.lastName}`}>
-                        {u.firstName} {u.lastName}
+                      <div
+                        className="max-w-[10rem] truncate font-medium"
+                        title={`${u.firstName || ""} ${u.lastName || ""}`}
+                      >
+                        {u.firstName || u.name || "—"} {u.lastName || ""}
                       </div>
                     </td>
 
@@ -80,14 +117,14 @@ export default function Users() {
                       <div className="flex flex-wrap gap-2">
                         {u.role !== "admin" ? (
                           <button
-                            onClick={() => changeRole(u.id, "admin")}
+                            onClick={() => changeRole(u._id, "admin")}
                             className="px-3 py-1 rounded-lg shadow bg-[var(--accent)] text-white hover:opacity-90 transition text-xs sm:text-sm"
                           >
                             Promote
                           </button>
                         ) : (
                           <button
-                            onClick={() => changeRole(u.id, "user")}
+                            onClick={() => changeRole(u._id, "user")}
                             className="px-3 py-1 rounded-lg shadow bg-red-500 text-white hover:bg-red-600 transition text-xs sm:text-sm"
                           >
                             Demote
@@ -95,7 +132,7 @@ export default function Users() {
                         )}
 
                         <button
-                          onClick={() => navigate(`/admin/users/${u.id}`)}
+                          onClick={() => navigate(`/admin/users/${u._id}`)}
                           className="px-3 py-1 rounded-lg shadow bg-[var(--brand)] text-white hover:opacity-90 transition text-xs sm:text-sm"
                         >
                           View
@@ -108,21 +145,21 @@ export default function Users() {
             </table>
           </div>
 
-          {/* ---------- MOBILE: card/list view (shown under sm) ---------- */}
+          {/* ---------- MOBILE LIST ---------- */}
           <div className="sm:hidden p-3 space-y-3">
             {users.map((u) => (
-              <div key={u.id} className="bg-gray-50 rounded-lg p-3 border">
+              <div key={u._id} className="bg-gray-50 rounded-lg p-3 border">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium truncate" title={`${u.firstName} ${u.lastName}`}>
-                      {u.firstName} {u.lastName}
+                    <div className="font-medium truncate" title={`${u.firstName || ""} ${u.lastName || ""}`}>
+                      {u.firstName || u.name || "—"} {u.lastName || ""}
                     </div>
                     <div className="text-xs text-gray-600 break-all" title={u.email}>
                       {u.email}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       <span className="font-semibold">ID: </span>
-                      <span className="break-all">{u.id}</span>
+                      <span className="break-all">{u._id}</span>
                     </div>
                   </div>
 
@@ -132,14 +169,14 @@ export default function Users() {
                 <div className="mt-3 flex gap-2 flex-wrap">
                   {u.role !== "admin" ? (
                     <button
-                      onClick={() => changeRole(u.id, "admin")}
+                      onClick={() => changeRole(u._id, "admin")}
                       className="px-3 py-1 rounded-lg shadow bg-[var(--accent)] text-white hover:opacity-90 transition text-xs"
                     >
                       Promote
                     </button>
                   ) : (
                     <button
-                      onClick={() => changeRole(u.id, "user")}
+                      onClick={() => changeRole(u._id, "user")}
                       className="px-3 py-1 rounded-lg shadow bg-red-500 text-white hover:bg-red-600 transition text-xs"
                     >
                       Demote
@@ -147,7 +184,7 @@ export default function Users() {
                   )}
 
                   <button
-                    onClick={() => navigate(`/admin/users/${u.id}`)}
+                    onClick={() => navigate(`/admin/users/${u._id}`)}
                     className="px-3 py-1 rounded-lg shadow bg-[var(--brand)] text-white hover:opacity-90 transition text-xs"
                   >
                     View

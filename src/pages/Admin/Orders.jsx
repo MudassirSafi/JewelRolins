@@ -1,20 +1,23 @@
 // src/pages/Admin/Orders.jsx
+import api from "../../services/axiosConfig";
 import React, { useEffect, useState } from "react";
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
 
   useEffect(() => {
-    const all = JSON.parse(localStorage.getItem("all_orders") || "[]");
-    setOrders(all);
-  }, []);
+  api.get("/api/orders")
+    .then(res => setOrders(res.data.orders || []));
+}, []);
 
-  const changeStatus = (idx, status) => {
-    const copy = [...orders];
-    copy[idx].adminStatus = status;
-    setOrders(copy);
-    localStorage.setItem("all_orders", JSON.stringify(copy));
-  };
+const changeStatus = async (orderId, status) => {
+  try {
+    await api.put(`/api/orders/${orderId}`, { status });
+    setOrders(orders.map(o => o._id === orderId ? { ...o, status } : o));
+  } catch (err) {
+    alert("Error updating status: " + (err.response?.data?.message || err.message));
+  }
+};
 
   if (!orders.length)
     return (

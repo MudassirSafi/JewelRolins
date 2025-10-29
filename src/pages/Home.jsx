@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { getProducts } from "../services/api.js";
+import api from "../services/axiosConfig";
 import Hero from "../components/Hero.jsx";
 import { CartContext } from "../context/CartContext.jsx";
 
@@ -10,17 +11,19 @@ function ProductCard({ p }) {
 
   const handleAdd = () => {
     addToCart({
-      id: p.id,
-      title: p.title,
-      price: p.finalPrice ?? p.price,
-      originalPrice: p.price,
+      productId: p._id,
+      title: p.name,
+      price: p.price,
+      image: p.images?.[0] ?? "",
+      qty: 1,
       discount: p.discount || 0,
-      image: p.image || (p.images?.[0] ?? ""),
+      stock: p.stock || 0,
     });
-
     setAdded(true);
-    setTimeout(() => setAdded(false), 1200); // reset animation
+    setTimeout(() => setAdded(false), 1200);
   };
+
+  const prefetch = useCallback(() => {}, []);
 
   return (
     <motion.div
@@ -30,46 +33,88 @@ function ProductCard({ p }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.6, ease: "easeOut" }}
+      onMouseEnter={prefetch}
     >
+      <Link
+        to={`/product/${encodeURIComponent(p._id)}`}
+        title={`View ${p.name}`}
+        aria-label={`View ${p.name}`}
+        className="absolute top-3 right-3 z-10 bg-white/90 hover:bg-white px-2 py-1 rounded-full shadow flex items-center justify-center transition transform hover:scale-105"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-5 h-5 text-gray-700"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </Link>
+
+      {/* Product Image */}
       <div className="relative overflow-hidden rounded">
         <motion.img
-          src={p.image || (p.images?.[0] ?? "")}
-          alt={p.title}
+          src={p.images?.[0] ?? ""}
+          alt={p.name}
           className="w-full h-48 sm:h-56 md:h-60 object-cover rounded transition-transform duration-500 group-hover:scale-110 group-hover:rotate-1"
+          loading="lazy"
         />
         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition duration-500" />
       </div>
 
-      <h3 className="mt-3 font-semibold text-base sm:text-lg">{p.title}</h3>
-
-      {/* ✅ Price & discount display */}
-      <div className="mb-3 text-sm sm:text-base">
-        {p.discount > 0 ? (
-          <>
-            <span className="line-through text-gray-500 mr-2">PKR {p.price}</span>
-            <span className="font-semibold text-[var(--brand)]">PKR {p.finalPrice}</span>
-            <span className="ml-2 text-green-600 text-xs">{p.discount}% OFF</span>
-          </>
-        ) : (
-          <span className="font-semibold">PKR {p.price}</span>
-        )}
+      {/* Product Details */}
+      <h3 className="mt-3 font-semibold text-base sm:text-lg">{p.name}</h3>
+      <div className="text-sm sm:text-base mb-2">
+        <span className="font-semibold">PKR {p.price}</span>
       </div>
 
+      {/* Discount & Stock Info */}
+      <div className="text-xs text-gray-500 mb-3 flex flex-col gap-1">
+        <span>
+          💸 Discount:{" "}
+          <span className="text-[var(--brand)] font-medium">
+            {p.discount ? `${p.discount}%` : "No discount"}
+          </span>
+        </span>
+        <span>
+          📦 Stock:{" "}
+          <span
+            className={`font-medium ${
+              p.stock > 0 ? "text-green-600" : "text-red-500"
+            }`}
+          >
+            {p.stock > 0 ? `${p.stock} available` : "Out of stock"}
+          </span>
+        </span>
+      </div>
+
+      {/* Add to Cart Button */}
       <button
         onClick={handleAdd}
-        className="mt-auto px-4 py-2 rounded bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] text-white hover:opacity-90 transition text-sm sm:text-base relative"
+        disabled={p.stock <= 0}
+        className={`mt-auto px-4 py-2 rounded text-white text-sm sm:text-base relative transition ${
+          p.stock <= 0
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] hover:opacity-90"
+        }`}
       >
-        {added ? "✓ Added!" : "Add to Cart"}
+        {added ? "✓ Added!" : p.stock <= 0 ? "Out of Stock" : "Add to Cart"}
       </button>
 
-      {/* ✅ Floating animation feedback */}
+      {/* Added animation */}
       {added && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: -20 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.8 }}
-          className="absolute top-2 right-2 bg-[var(--brand)] text-white text-xs px-2 py-1 rounded shadow"
+          className="absolute top-2 right-12 bg-[var(--brand)] text-white text-xs px-2 py-1 rounded shadow"
         >
           Added!
         </motion.div>
@@ -85,47 +130,14 @@ export default function Home() {
   const [sort, setSort] = useState("featured");
 
   useEffect(() => {
-    let mounted = true;
     setLoading(true);
-
-    const loadProducts = async () => {
-      try {
-        const apiProducts = await getProducts();
-        const stored = JSON.parse(localStorage.getItem("custom_products") || "[]");
-
-        if (mounted) {
-          const merged = [
-            ...(Array.isArray(apiProducts) ? apiProducts : []),
-            ...stored,
-          ];
-
-          // ✅ show discounted products first
-          merged.sort((a, b) => (b.discount || 0) - (a.discount || 0));
-
-          setProducts(merged);
-        }
-      } catch (err) {
-        console.error("getProducts failed:", err);
-        if (mounted) setProducts([]);
-      } finally {
-        mounted && setLoading(false);
-      }
-    };
-
-    loadProducts();
-
-    const handleStorageOrCustom = () => {
-      loadProducts();
-    };
-
-    window.addEventListener("storage", handleStorageOrCustom);
-    window.addEventListener("custom_products_changed", handleStorageOrCustom);
-
-    return () => {
-      mounted = false;
-      window.removeEventListener("storage", handleStorageOrCustom);
-      window.removeEventListener("custom_products_changed", handleStorageOrCustom);
-    };
+    api
+      .get("/api/products")
+      .then((res) => {
+        setProducts(res.data.products || []);
+      })
+      .catch(() => setProducts([]))
+      .finally(() => setLoading(false));
   }, []);
 
   const normalize = (str) => str?.toLowerCase() || "";
@@ -135,22 +147,28 @@ export default function Home() {
       ? products
       : products.filter((p) => {
           const c = normalize(p.category);
-          const t = normalize(p.title);
+          const t = normalize(p.name);
           const combined = `${c} ${t}`;
           return combined.includes(category.toLowerCase().slice(0, -1));
         });
 
   if (sort === "low") {
-    filtered = [...filtered].sort((a, b) => (a.finalPrice ?? a.price) - (b.finalPrice ?? b.price));
+    filtered = [...filtered].sort((a, b) => a.price - b.price);
   } else if (sort === "high") {
-    filtered = [...filtered].sort((a, b) => (b.finalPrice ?? b.price) - (a.finalPrice ?? a.price));
+    filtered = [...filtered].sort((a, b) => b.price - a.price);
   }
 
-  const categories = ["All", "Rings", "Watches", "Necklaces", "Earrings", "Bracelets"];
+  const categories = [
+    "All",
+    "Rings",
+    "Watches",
+    "Necklaces",
+    "Earrings",
+    "Bracelets",
+  ];
 
   return (
     <div className="max-w-8xl mx-auto px-3 py-8">
-      {/* HERO */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -160,7 +178,6 @@ export default function Home() {
         <Hero />
       </motion.div>
 
-      {/* OUR PRODUCTS */}
       <section id="our-products" className="mt-12">
         <motion.div
           className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
@@ -172,7 +189,6 @@ export default function Home() {
           <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] bg-clip-text text-transparent">
             Our Products
           </h2>
-
           <div className="flex flex-wrap gap-3 items-center">
             {categories.map((c) => (
               <button
@@ -187,7 +203,6 @@ export default function Home() {
                 {c}
               </button>
             ))}
-
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
@@ -211,7 +226,7 @@ export default function Home() {
         ) : filtered.length ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {filtered.map((p, i) => (
-              <ProductCard key={p.id || i} p={p} />
+              <ProductCard key={p._id || i} p={p} />
             ))}
           </div>
         ) : (

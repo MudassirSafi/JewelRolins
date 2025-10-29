@@ -1,4 +1,4 @@
-// src/pages/Admin/EditProduct.jsx
+import api from "../../services/axiosConfig";
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -8,80 +8,93 @@ export default function EditProduct() {
   const navigate = useNavigate();
   const [form, setForm] = useState(null);
 
-  useEffect(() => {
-    const products = JSON.parse(localStorage.getItem("custom_products") || "[]");
-    const p = products.find((x) => String(x.id) === String(id));
-    if (!p) {
+ useEffect(() => {
+  api
+    .get(`/api/products/${id}`)
+    .then((res) => {
+      const p = res.data.product;
+      if (!p) {
+        alert("Product not found.");
+        navigate("/admin/dashboard");
+        return;
+      }
+      setForm({
+        title: p.name,
+        description: p.description,
+        price: p.price,
+        discount: p.discount,
+        category: p.category,
+        stock: p.stock || 0, // ✅ add this
+        images: (p.images || []).map((u) => ({ src: u })), // normalize to {src}
+      });
+    })
+    .catch(() => {
       alert("Product not found.");
       navigate("/admin/dashboard");
-      return;
-    }
-    setForm({
-      title: p.title || "",
-      description: p.description || "",
-      price: p.price || 0,
-      discount: p.discount || 0,
-      category: p.category || "",
-      images: p.images || [],
     });
-  }, [id, navigate]);
+}, [id, navigate]);
 
-  const handleChange = (e) =>
-    setForm((s) => ({ ...s, [e.target.name]: e.target.value }));
+  // ✅ Handle input field changes
+  const handleChange = (e) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
 
-  // ✅ Add image
-  const handleImageAdd = () => {
+  // ✅ Handle adding new image URL
+  const handleImageAdd = async () => {
     const url = prompt("Enter image URL:");
-    if (!url) return;
-    setForm((s) => ({ ...s, images: [...(s.images || []), url] }));
-  };
-
-  // ✅ Replace image
-  const handleImageReplace = (idx) => {
-    const url = prompt("Enter new image URL:");
-    if (!url) return;
-    setForm((s) => {
-      const copy = [...s.images];
-      copy[idx] = url;
-      return { ...s, images: copy };
-    });
-  };
-
-  // ✅ Remove image
-  const handleImageRemove = (idx) => {
-    setForm((s) => {
-      const copy = [...s.images];
-      copy.splice(idx, 1);
-      return { ...s, images: copy };
-    });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const products = JSON.parse(localStorage.getItem("custom_products") || "[]");
-    const idx = products.findIndex((x) => String(x.id) === String(id));
-    if (idx === -1) {
-      alert("Product not found.");
-      navigate("/admin/dashboard");
-      return;
+    if (url) {
+      setForm((prev) => ({
+        ...prev,
+        images: [...(prev.images || []), { src: url }],
+      }));
     }
+  };
+
+  // ✅ Handle removing image by index
+  const handleImageRemove = (index) => {
+    setForm((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
+  };
+
+  // ✅ Handle replacing an image
+  const handleImageReplace = async (index) => {
+    const url = prompt("Enter new image URL:");
+    if (url) {
+      setForm((prev) => ({
+        ...prev,
+        images: prev.images.map((img, i) => (i === index ? { src: url } : img)),
+      }));
+    }
+  };
+
+  // ✅ Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     const price = Number(form.price || 0);
     const discount = Number(form.discount || 0);
-    const finalPrice =
-      Math.round(price * (1 - discount / 100) * 100) / 100;
-    products[idx] = {
-      ...products[idx],
-      title: form.title,
+
+    // For now send JSON update (images are URLs). If you want file upload on edit,
+    // update backend PUT route to accept multipart/form-data.
+    const updatedProduct = {
+      name: form.title,
       description: form.description,
       price,
       discount,
-      finalPrice,
       category: form.category,
-      images: form.images || [],
+        stock: Number(form.stock || 0), // ✅ new addition
+      images: (form.images || []).map((i) => i.src || i),
     };
-    localStorage.setItem("custom_products", JSON.stringify(products));
-    alert("✅ Product updated.");
-    navigate("/admin/dashboard");
+
+    try {
+      await api.put(`/api/products/${id}`, updatedProduct);
+      alert("✅ Product updated.");
+      navigate("/admin/dashboard");
+    } catch (err) {
+      console.error("Update product error:", err.response || err.message);
+      alert("Error updating product: " + (err.response?.data?.message || err.message));
+    }
   };
 
   if (!form) return <div className="text-center py-20">Loading...</div>;
@@ -120,26 +133,36 @@ export default function EditProduct() {
           placeholder="Description"
           className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[var(--brand)]"
         />
-        <div className="grid grid-cols-2 gap-3">
-          <input
-            name="price"
-            type="number"
-            value={form.price}
-            onChange={handleChange}
-            placeholder="Price"
-            className="border px-3 py-2 rounded focus:ring-2 focus:ring-[var(--brand)]"
-          />
-          <input
-            name="discount"
-            type="number"
-            value={form.discount}
-            onChange={handleChange}
-            placeholder="Discount %"
-            className="border px-3 py-2 rounded focus:ring-2 focus:ring-[var(--brand)]"
-          />
-        </div>
 
-        {/* Images Section */}
+        <div className="grid grid-cols-2 gap-3">
+  <input
+    name="price"
+    type="number"
+    value={form.price}
+    onChange={handleChange}
+    placeholder="Price"
+    className="border px-3 py-2 rounded focus:ring-2 focus:ring-[var(--brand)]"
+  />
+  <input
+    name="discount"
+    type="number"
+    value={form.discount}
+    onChange={handleChange}
+    placeholder="Discount %"
+    className="border px-3 py-2 rounded focus:ring-2 focus:ring-[var(--brand)]"
+  />
+</div>
+        {/* ✅ Stock Field */}
+<input
+  name="stock"
+  type="number"
+  value={form.stock}
+  onChange={handleChange}
+  placeholder="Stock Quantity"
+  className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[var(--brand)]"
+/>
+
+        {/* ✅ Images Section */}
         <div>
           <label className="block font-medium mb-2">Product Images</label>
           <button
@@ -157,7 +180,7 @@ export default function EditProduct() {
                 className="relative border rounded overflow-hidden group"
               >
                 <img
-                  src={u}
+                  src={u.src || u}
                   alt=""
                   className="w-full h-28 object-cover group-hover:scale-105 transition"
                 />
@@ -182,26 +205,25 @@ export default function EditProduct() {
           </div>
         </div>
 
-        {/* Save / Cancel */}
-<div className="flex gap-2 sm:gap-3">
-  <button
-    type="submit"
-    className="flex-1 py-2 sm:py-3 rounded-lg shadow font-semibold text-white 
-               bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] 
-               hover:opacity-90 transition text-sm sm:text-base"
-  >
-    💾 Save Changes
-  </button>
-  <button
-    type="button"
-    onClick={() => navigate("/admin/dashboard")}
-    className="flex-1 py-2 sm:py-3 rounded-lg shadow border hover:bg-gray-100 
-               transition text-sm sm:text-base"
-  >
-    Cancel
-  </button>
-</div>
-
+        {/* ✅ Save / Cancel */}
+        <div className="flex gap-2 sm:gap-3">
+          <button
+            type="submit"
+            className="flex-1 py-2 sm:py-3 rounded-lg shadow font-semibold text-white 
+                     bg-gradient-to-r from-[var(--accent)] to-[var(--brand)] 
+                     hover:opacity-90 transition text-sm sm:text-base"
+          >
+            💾 Save Changes
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/admin/dashboard")}
+            className="flex-1 py-2 sm:py-3 rounded-lg shadow border hover:bg-gray-100 
+                     transition text-sm sm:text-base"
+          >
+            Cancel
+          </button>
+        </div>
       </form>
     </motion.div>
   );

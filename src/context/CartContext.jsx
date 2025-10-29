@@ -1,129 +1,152 @@
-// src/context/CartContext.jsx
-import React, { createContext, useEffect, useState } from "react";
+// filepath: src/context/CartContext.jsx
+import React, { createContext, useContext, useEffect, useState } from "react";
+import api, { setAuthToken } from "../services/axiosConfig";
+import { AuthContext } from "./AuthContext.jsx";
 
 export const CartContext = createContext();
 
-// localStorage current user key (same as AuthContext)
-const CURRENT_USER_KEY = "muhi_user";
-
 export function CartProvider({ children }) {
+  const { user } = useContext(AuthContext);
   const [cart, setCart] = useState([]);
 
-  const getCurrentUser = () => {
-    try {
-      return JSON.parse(localStorage.getItem(CURRENT_USER_KEY));
-    } catch {
-      return null;
-    }
-  };
+  const userId = user?._id ?? user?.id ?? user?.userId ?? null;
+  const token = user?.token ?? user?.accessToken ?? null;
 
-  // ✅ normalize image path so it’s always a string
-  const normalizeImage = (img) => {
-    if (!img) return "";
-    if (typeof img === "string") return img;
-    if (typeof img === "object") {
-      return img.default || img.src || img.url || "";
-    }
-    return "";
-  };
+  useEffect(() => {
+    if (token) setAuthToken(token);
+    else setAuthToken(null);
+  }, [token]);
 
-  const sanitizeProduct = (p) => {
-    if (!p) return p;
-    const copy = { ...p };
-    copy.image =
-      normalizeImage(copy.image) ||
-      normalizeImage(copy.img) ||
-      (Array.isArray(copy.images) ? normalizeImage(copy.images[0]) : "") ||
-      "";
-    return copy;
-  };
+  const authHeaders = token
+    ? { headers: { Authorization: `Bearer ${token}` } }
+    : {};
 
-  const loadCartForUser = (user) => {
-    try {
-      if (user?.email) {
-        const key = `muhi_cart_${encodeURIComponent(user.email)}`;
-        const raw = localStorage.getItem(key);
-        const parsed = raw ? JSON.parse(raw) : [];
-        setCart(Array.isArray(parsed) ? parsed.map(sanitizeProduct) : []);
-      } else {
-        // guest or nobody logged in => empty cart
-        setCart([]);
-      }
-    } catch {
+  // ✅ Fetch Cart
+  useEffect(() => {
+    if (!userId) {
       setCart([]);
+      return;
+    }
+
+    let mounted = true;
+    async function fetchCart() {
+      try {
+        const res = await api.get(`/api/users/${userId}/cart`, authHeaders);
+        if (!mounted) return;
+        setCart(res.data.cart || []);
+      } catch (err) {
+        console.error("Error fetching cart:", err);
+        if (mounted) setCart([]);
+      }
+    }
+
+    fetchCart();
+    return () => (mounted = false);
+  }, [userId, token]);
+
+  // ✅ Robust Add to Cart with full debugging info
+const addToCart = async (productOrId, qtyChange = 1) => {
+  if (!userId) {
+    alert("Please log in to add items to your cart!");
+    return;
+  }
+
+  let productId = null;
+
+  if (!productOrId) {
+    console.error("🛒 addToCart: no product provided", productOrId);
+    alert("Product missing. Please refresh and try again.");
+    return;
+  }
+
+  // 🧠 DEBUG: Show the full incoming object
+  console.log("🧩 addToCart called with:", productOrId);
+  console.log("📦 Type of productOrId:", typeof productOrId);
+
+  if (typeof productOrId === "string") {
+    productId = productOrId;
+  } else if (typeof productOrId === "object") {
+    // 🧠 DEBUG: Show what keys exist in the product
+    console.log("🔍 Keys inside productOrId:", Object.keys(productOrId));
+
+    productId =
+  productOrId._id ||
+  productOrId.id ||
+  productOrId.productId || // ✅ added this line
+  productOrId.product?._id ||
+  productOrId.product?.id ||
+  (typeof productOrId.product === "string"
+    ? productOrId.product
+    : null);
+
+
+    // 🧠 DEBUG: Show nested product info if available
+    if (productOrId.product) {
+      console.log("🧱 Nested product object:", productOrId.product);
+    }
+  }
+
+  // 🧠 Show final extracted ID
+  console.log("🪪 Extracted productId:", productId);
+
+  if (!productId) {
+    console.error("🛒 addToCart: ❌ product id missing", productOrId);
+    console.warn("💡 Check what productOrId looks like above ⬆️");
+    alert("Product ID missing. Please refresh and try again.");
+    return;
+  }
+
+  try {
+    const res = await api.post(
+      `/api/users/${userId}/cart`,
+      { productId, quantity: qtyChange },
+      authHeaders
+    );
+
+    console.log("✅ Product added to cart:", productId);
+    if (res.data?.cart) {
+      setCart(res.data.cart);
+    } else {
+      console.warn("⚠️ Cart response missing:", res.data);
+    }
+  } catch (err) {
+    console.error("🚨 Error adding to cart:", err.response?.data || err.message);
+  }
+};
+
+
+  // ✅ Remove item
+  const removeFromCart = async (productId) => {
+    if (!userId) return;
+
+    try {
+      const res = await api.delete(
+        `/api/users/${userId}/cart/${productId}`,
+        authHeaders
+      );
+      setCart(res.data.cart || []);
+    } catch (err) {
+      console.error("Error removing from cart:", err);
     }
   };
 
-  // load cart on mount
-  useEffect(() => {
-    loadCartForUser(getCurrentUser());
-  }, []);
-
-  // listen for auth changes from AuthContext (login/logout)
-  useEffect(() => {
-    const handler = (e) => {
-      const user = e?.detail?.user ?? getCurrentUser();
-      loadCartForUser(user);
-    };
-    window.addEventListener("muhi:auth-change", handler);
-    return () => window.removeEventListener("muhi:auth-change", handler);
-  }, []);
-
-  // persist cart to the current user's key whenever cart changes
-  useEffect(() => {
+  // ✅ Clear Cart
+  const clearCart = async () => {
+    if (!userId) return;
     try {
-      const user = getCurrentUser();
-      if (user?.email) {
-        const key = `muhi_cart_${encodeURIComponent(user.email)}`;
-        localStorage.setItem(
-          key,
-          JSON.stringify(cart.map(sanitizeProduct)) // ✅ always save clean image
-        );
-      } else {
-        localStorage.removeItem("muhi_cart_v1");
-      }
-    } catch {}
-  }, [cart]);
-
-  const addToCart = (product, qty = 1) => {
-    setCart((prev) => {
-      const idx = prev.findIndex((p) => p.id === product.id);
-      if (idx >= 0) {
-        const updated = prev.map((p) =>
-          p.id === product.id ? { ...p, qty: p.qty + qty } : p
-        );
-        return updated.filter((p) => p.qty > 0);
-      }
-
-      const origPrice = Number(product.originalPrice ?? product.price);
-      const discount = Number(product.discount) || 0;
-      const finalPrice =
-        product.finalPrice ??
-        Math.round((origPrice * (1 - discount / 100)) * 100) / 100;
-
-      const sanitized = sanitizeProduct(product);
-
-      return [
-        {
-          ...sanitized,
-          originalPrice: origPrice,
-          discount,
-          price: finalPrice,
-          qty,
-        },
-        ...prev,
-      ];
-    });
+      await api.delete(`/api/users/${userId}/cart`, authHeaders);
+      setCart([]);
+    } catch (err) {
+      console.error("Error clearing cart:", err);
+    }
   };
 
-  const removeFromCart = (id) =>
-    setCart((prev) => prev.filter((p) => p.id !== id));
-
-  const clearCart = () => setCart([]);
-
-  const totalItems = cart.reduce((s, p) => s + (p.qty || 0), 0);
+  // ✅ Totals
+  const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const subtotal = cart.reduce(
-    (sum, p) => sum + (Number(p.price) || 0) * (p.qty || 1),
+    (sum, item) =>
+      sum +
+      ((item.product?.price ?? item.price ?? 0) * (item.quantity ?? 0)),
     0
   );
 

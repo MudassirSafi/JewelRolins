@@ -1,68 +1,52 @@
-// src/pages/Checkout.jsx
+// src/components/Checkout.jsx
 import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { CartContext } from "../context/CartContext.jsx";
+import { AuthContext } from "../context/AuthContext.jsx";
+import api from "../services/axiosConfig";
 import { motion } from "framer-motion";
 
 export default function Checkout() {
-  const { cart, clearCart } = useContext(CartContext);
+  const { cart, clearCart, subtotal } = useContext(CartContext);
+  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    name: "",
-    email: "",
+    name: user?.name || "",
+    email: user?.email || "",
     address: "",
     city: "",
     phone: "",
-    paymentMethod: "cod",
+    paymentMethod: "COD", // only allowed enums: COD, Card
     cardNumber: "",
     cardExpiry: "",
     cardCVV: "",
-    easypaisaNumber: "",
-    jazzcashNumber: "",
   });
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  const subtotal = cart.reduce(
-    (s, p) => s + (Number(p.price) || 0) * (p.qty || 1),
-    0
-  );
   const shipping = subtotal > 0 ? 150 : 0;
   const total = subtotal + shipping;
 
-  // Input handler with safe/explicit formatting
   const handleChange = (e) => {
-    const { name } = e.target;
-    let value = e.target.value;
+    const { name, value: rawValue } = e.target;
+    let value = rawValue;
 
     if (name === "cardNumber") {
-      // keep digits only, limit to 16 digits, format as "#### #### #### ####"
-      value = value.replace(/\D/g, "").slice(0, 16);
-      value = value.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
+      value = value.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 ").trim();
     } else if (name === "cardExpiry") {
-      // MMYY -> MM/YY
       value = value.replace(/\D/g, "").slice(0, 4);
       if (value.length > 2) value = value.slice(0, 2) + "/" + value.slice(2);
     } else if (name === "cardCVV") {
       value = value.replace(/\D/g, "").slice(0, 3);
     } else if (name === "phone") {
-      // user phone: strict 11 digits
       value = value.replace(/\D/g, "").slice(0, 11);
-    } else if (name === "easypaisaNumber" || name === "jazzcashNumber") {
-      // explicit: Easypaisa / JazzCash both strict 11 digits
-      value = value.replace(/\D/g, "").slice(0, 11);
-    } else {
-      // default: keep the raw value (for name, email, address, city, paymentMethod)
-      // (for paymentMethod, we want the radio value)
-      // no extra processing
     }
 
     setForm((s) => ({ ...s, [name]: value }));
   };
 
-  // Validation
   const validate = () => {
     const errs = {};
     if (!form.name.trim()) errs.name = "Full name required";
@@ -72,38 +56,14 @@ export default function Checkout() {
     if (!form.city.trim()) errs.city = "City required";
     if (!/^03[0-9]{9}$/.test(form.phone))
       errs.phone = "Enter valid phone (03XXXXXXXXX)";
-
-    if (form.paymentMethod === "card") {
+    if (form.paymentMethod === "Card") {
       const cleanCard = form.cardNumber.replace(/\s/g, "");
-      if (!/^\d{16}$/.test(cleanCard))
-        errs.cardNumber = "Card number must be 16 digits";
+      if (!/^\d{16}$/.test(cleanCard)) errs.cardNumber = "Card number must be 16 digits";
       if (!/^(0[1-9]|1[0-2])\/[0-9]{2}$/.test(form.cardExpiry))
         errs.cardExpiry = "Expiry must be in MM/YY format";
-      if (!/^[0-9]{3}$/.test(form.cardCVV))
-        errs.cardCVV = "CVV must be 3 digits";
+      if (!/^[0-9]{3}$/.test(form.cardCVV)) errs.cardCVV = "CVV must be 3 digits";
     }
-
-    if (
-      form.paymentMethod === "easypaisa" &&
-      !/^03[0-9]{9}$/.test(form.easypaisaNumber)
-    ) {
-      errs.easypaisaNumber = "Enter valid Easypaisa number (03XXXXXXXXX)";
-    }
-
-    if (
-      form.paymentMethod === "jazzcash" &&
-      !/^03[0-9]{9}$/.test(form.jazzcashNumber)
-    ) {
-      errs.jazzcashNumber = "Enter valid JazzCash number (03XXXXXXXXX)";
-    }
-
     return errs;
-  };
-
-  const getEstimatedDelivery = () => {
-    const d = new Date();
-    d.setDate(d.getDate() + 3);
-    return d.toLocaleDateString();
   };
 
   const handleSubmit = async (e) => {
@@ -116,49 +76,72 @@ export default function Checkout() {
     setErrors({});
     setLoading(true);
 
-    const orderDetails = {
-      id: `order_${Date.now()}`,
-      ...form,
-      items: cart,
-      subtotal,
-      shipping,
-      total,
-      date: new Date().toLocaleString(),
-      delivery: getEstimatedDelivery(),
-    };
+    if (!user) {
+      setLoading(false);
+      alert("Please sign in to place an order.");
+      navigate("/signin");
+      return;
+    }
 
     try {
-      const response = await fetch(
-        "http://localhost:5000/create-payment-intent",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(orderDetails),
-        }
-      );
+      // Prepare products payload
+      const productsPayload = cart
+        .map((item) => {
+          const stock = item.product?.stock ?? 0;
+          if (stock < 1) return null;
+          const qty = Math.max(1, Math.min(Number(item.qty ?? item.quantity ?? 1), stock));
+          return {
+            productId: item.product?._id ?? item.productId ?? item._id,
+            quantity: qty,
+            price: item.product?.price ?? item.price ?? 0,
+          };
+        })
+        .filter(Boolean);
 
-      if (!response.ok) throw new Error("Network error while placing order");
+      if (productsPayload.length === 0) {
+        setLoading(false);
+        alert("No items in cart or all items are out of stock.");
+        return;
+      }
 
-      const data = await response.json();
-
-      const toStore = {
-        ...orderDetails,
-        paymentStatus:
-          form.paymentMethod === "cod" ? "Cash on Delivery" : "Paid (Test Mode)",
-        backendStoredId: data.storedOrderId || data.id,
+      const orderPayload = {
+        user: user._id ?? user.id,
+        products: productsPayload,
+        total,
+        address: form.address,
+        city: form.city,
+        phone: form.phone,
+       paymentMethod: form.paymentMethod === "card" ? "Card" : "COD", // <-- key fix
+        name: form.name,
+        email: form.email,
       };
-      localStorage.setItem("lastOrder", JSON.stringify(toStore));
 
-      const all = JSON.parse(localStorage.getItem("all_orders") || "[]");
-      all.unshift(toStore);
-      localStorage.setItem("all_orders", JSON.stringify(all));
+      const headers = { Authorization: `Bearer ${user.token ?? ""}` };
 
-      clearCart();
-      setLoading(false);
-      navigate("/success");
+      if (form.paymentMethod === "Card") {
+        const createRes = await api.post("/api/orders", orderPayload, { headers });
+        const createdOrder = createRes.data.order;
+        if (!createdOrder?._id) throw new Error("Order creation failed");
+
+        const stripeRes = await api.post(
+          "/api/payments/create-checkout-session",
+          { orderId: createdOrder._id },
+          { headers }
+        );
+
+        setLoading(false);
+        window.location.href = stripeRes.data.url;
+        return;
+      } else {
+        const res = await api.post("/api/orders", orderPayload, { headers });
+        clearCart();
+        setLoading(false);
+        navigate("/success", { state: { order: res.data.order } });
+      }
     } catch (err) {
       setLoading(false);
-      alert("Order failed: " + err.message);
+      console.error("Order failed", err.response?.data || err.message);
+      alert("Order failed: " + (err.response?.data?.message || err.message));
     }
   };
 
@@ -171,36 +154,18 @@ export default function Checkout() {
       >
         <h1 className="text-2xl font-bold mb-4">Checkout</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Basic Info */}
           {["name", "email", "address", "city", "phone"].map((field) => (
             <div key={field}>
               <input
                 name={field}
                 value={form[field]}
                 onChange={handleChange}
-                placeholder={
-                  field === "phone"
-                    ? "Phone (03XXXXXXXXX)"
-                    : field.charAt(0).toUpperCase() + field.slice(1)
-                }
+                placeholder={field === "phone" ? "Phone (03XXXXXXXXX)" : field.charAt(0).toUpperCase() + field.slice(1)}
                 type={field === "email" ? "email" : "text"}
                 className="w-full border px-3 py-2 rounded"
                 required
-                // mobile friendly numeric keyboard for phone
-                {...(field === "phone" ? { inputMode: "numeric" } : {})}
-                autoComplete={
-                  field === "email"
-                    ? "email"
-                    : field === "phone"
-                    ? "tel"
-                    : field === "address"
-                    ? "street-address"
-                    : undefined
-                }
               />
-              {errors[field] && (
-                <p className="text-red-500 text-sm">{errors[field]}</p>
-              )}
+              {errors[field] && <p className="text-red-500 text-sm">{errors[field]}</p>}
             </div>
           ))}
 
@@ -208,111 +173,56 @@ export default function Checkout() {
           <div>
             <label className="font-semibold">Payment Method</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-              {["cod", "card", "easypaisa", "jazzcash"].map((method) => (
+              {["cod", "card"].map((method) => (
                 <label
                   key={method}
                   className={`border rounded p-3 cursor-pointer flex items-center gap-2 ${
-                    form.paymentMethod === method ? "border-[var(--accent)] bg-gray-50" : ""
+                    form.paymentMethod.toLowerCase() === method ? "border-[var(--accent)] bg-gray-50" : ""
                   }`}
                 >
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value={method}
-                    checked={form.paymentMethod === method}
-                    onChange={handleChange}
-                  />
-                  {method === "cod"
-                    ? "Cash on Delivery"
-                    : method.charAt(0).toUpperCase() + method.slice(1)}
+                 <input
+  type="radio"
+  name="paymentMethod"
+  value={method === "card" ? "Card" : "COD"} // send exact enum
+  checked={form.paymentMethod === (method === "card" ? "Card" : "COD")}
+  onChange={handleChange}
+/>
+
+                  {method === "cod" ? "Cash on Delivery" : method.charAt(0).toUpperCase() + method.slice(1)}
                 </label>
               ))}
             </div>
           </div>
 
           {/* Conditional Payment Fields */}
-          {form.paymentMethod === "card" && (
+          {form.paymentMethod.toLowerCase() === "card" && (
             <div className="space-y-3">
               <input
                 name="cardNumber"
                 value={form.cardNumber}
                 onChange={handleChange}
                 placeholder="#### #### #### ####"
-                maxLength={19} // 16 digits + 3 spaces
+                maxLength={19}
                 className="w-full border px-3 py-2 rounded"
-                inputMode="numeric"
-                autoComplete="cc-number"
               />
-              {errors.cardNumber && (
-                <p className="text-red-500 text-sm">{errors.cardNumber}</p>
-              )}
-
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <input
-                    name="cardExpiry"
-                    value={form.cardExpiry}
-                    onChange={handleChange}
-                    placeholder="MM/YY"
-                    maxLength={5}
-                    className="w-full border px-3 py-2 rounded"
-                    inputMode="numeric"
-                    autoComplete="cc-exp"
-                  />
-                  {errors.cardExpiry && (
-                    <p className="text-red-500 text-sm">{errors.cardExpiry}</p>
-                  )}
-                </div>
-                <div>
-                  <input
-                    name="cardCVV"
-                    value={form.cardCVV}
-                    onChange={handleChange}
-                    placeholder="CVV"
-                    maxLength={3}
-                    className="w-full border px-3 py-2 rounded"
-                    inputMode="numeric"
-                    autoComplete="cc-csc"
-                  />
-                  {errors.cardCVV && (
-                    <p className="text-red-500 text-sm">{errors.cardCVV}</p>
-                  )}
-                </div>
+                <input
+                  name="cardExpiry"
+                  value={form.cardExpiry}
+                  onChange={handleChange}
+                  placeholder="MM/YY"
+                  maxLength={5}
+                  className="w-full border px-3 py-2 rounded"
+                />
+                <input
+                  name="cardCVV"
+                  value={form.cardCVV}
+                  onChange={handleChange}
+                  placeholder="CVV"
+                  maxLength={3}
+                  className="w-full border px-3 py-2 rounded"
+                />
               </div>
-            </div>
-          )}
-
-          {form.paymentMethod === "easypaisa" && (
-            <div>
-              <input
-                name="easypaisaNumber"
-                value={form.easypaisaNumber}
-                onChange={handleChange}
-                placeholder="Easypaisa Number (03XXXXXXXXX)"
-                maxLength={11}
-                className="w-full border px-3 py-2 rounded"
-                inputMode="numeric"
-              />
-              {errors.easypaisaNumber && (
-                <p className="text-red-500 text-sm">{errors.easypaisaNumber}</p>
-              )}
-            </div>
-          )}
-
-          {form.paymentMethod === "jazzcash" && (
-            <div>
-              <input
-                name="jazzcashNumber"
-                value={form.jazzcashNumber}
-                onChange={handleChange}
-                placeholder="JazzCash Number (03XXXXXXXXX)"
-                maxLength={11}
-                className="w-full border px-3 py-2 rounded"
-                inputMode="numeric"
-              />
-              {errors.jazzcashNumber && (
-                <p className="text-red-500 text-sm">{errors.jazzcashNumber}</p>
-              )}
             </div>
           )}
 
