@@ -173,58 +173,78 @@ export default function Checkout() {
           <div>
             <label className="font-semibold">Payment Method</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-              {["cod", "card"].map((method) => (
-                <label
-                  key={method}
-                  className={`border rounded p-3 cursor-pointer flex items-center gap-2 ${
-                    form.paymentMethod.toLowerCase() === method ? "border-[var(--accent)] bg-gray-50" : ""
-                  }`}
-                >
-                 <input
-  type="radio"
-  name="paymentMethod"
-  value={method === "card" ? "Card" : "COD"} // send exact enum
-  checked={form.paymentMethod === (method === "card" ? "Card" : "COD")}
-  onChange={handleChange}
-/>
+             {["cod", "card"].map((method) => (
+  <label
+    key={method}
+    className={`border rounded p-3 cursor-pointer flex items-center gap-2 ${
+      form.paymentMethod.toLowerCase() === method ? "border-[var(--accent)] bg-gray-50" : ""
+    }`}
+    onClick={async () => {
+      if (method === "card") {
+        // 🚀 Directly go to Stripe checkout
+        if (!user) {
+          alert("Please sign in to place an order.");
+          navigate("/signin");
+          return;
+        }
 
-                  {method === "cod" ? "Cash on Delivery" : method.charAt(0).toUpperCase() + method.slice(1)}
-                </label>
-              ))}
+        setLoading(true);
+
+        try {
+          // prepare cart order data
+          const productsPayload = cart
+            .map((item) => ({
+              productId: item.product?._id ?? item.productId ?? item._id,
+              quantity: Math.max(1, Number(item.qty ?? 1)),
+              price: item.product?.price ?? item.price ?? 0,
+            }))
+            .filter(Boolean);
+
+          const orderPayload = {
+            user: user._id ?? user.id,
+            products: productsPayload,
+            total,
+            address: form.address || "N/A",
+            city: form.city || "N/A",
+            phone: form.phone || "00000000000",
+            paymentMethod: "Card",
+            name: form.name,
+            email: form.email,
+          };
+
+          const headers = { Authorization: `Bearer ${user.token ?? ""}` };
+
+          // ✅ Create order first
+          const createRes = await api.post("/api/orders", orderPayload, { headers });
+          const createdOrder = createRes.data.order;
+          if (!createdOrder?._id) throw new Error("Order creation failed");
+
+          // ✅ Then request Stripe session
+          const stripeRes = await api.post(
+            "/api/payments/create-checkout-session",
+            { orderId: createdOrder._id },
+            { headers }
+          );
+
+          // ✅ Redirect to Stripe checkout
+          setLoading(false);
+          window.location.href = stripeRes.data.url;
+        } catch (err) {
+          setLoading(false);
+          console.error("Stripe redirect failed:", err);
+          alert("Payment error: " + (err.response?.data?.message || err.message));
+        }
+      } else {
+        setForm((s) => ({ ...s, paymentMethod: "COD" }));
+      }
+    }}
+  >
+    {method === "cod" ? "Cash on Delivery" : "Card Payment"}
+  </label>
+))}
+
             </div>
           </div>
-
-          {/* Conditional Payment Fields */}
-          {form.paymentMethod.toLowerCase() === "card" && (
-            <div className="space-y-3">
-              <input
-                name="cardNumber"
-                value={form.cardNumber}
-                onChange={handleChange}
-                placeholder="#### #### #### ####"
-                maxLength={19}
-                className="w-full border px-3 py-2 rounded"
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  name="cardExpiry"
-                  value={form.cardExpiry}
-                  onChange={handleChange}
-                  placeholder="MM/YY"
-                  maxLength={5}
-                  className="w-full border px-3 py-2 rounded"
-                />
-                <input
-                  name="cardCVV"
-                  value={form.cardCVV}
-                  onChange={handleChange}
-                  placeholder="CVV"
-                  maxLength={3}
-                  className="w-full border px-3 py-2 rounded"
-                />
-              </div>
-            </div>
-          )}
 
           {/* Summary */}
           <div className="flex justify-between items-center pt-3">
